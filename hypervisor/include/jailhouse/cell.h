@@ -55,6 +55,9 @@ struct cell {
 	/** List of PCI devices assigned to this cell. */
 	struct pci_device *pci_devices;
 
+	/** List of register maps assigned to this cell.  */
+	struct reg_map_data *regmap;
+
 	/** Lock protecting changes to mmio_locations, mmio_handlers, and
 	 * num_mmio_regions. */
 	spinlock_t mmio_region_lock;
