@@ -50,7 +50,7 @@
  * Incremented on any layout or semantic change of system or cell config.
  * Also update HEADER_REVISION in tools.
  */
-#define JAILHOUSE_CONFIG_REVISION	11
+#define JAILHOUSE_CONFIG_REVISION	12
 
 #define JAILHOUSE_CELL_NAME_MAXLEN	31
 
@@ -98,6 +98,7 @@ struct jailhouse_cell_desc {
 	__u32 pio_bitmap_size;
 	__u32 num_pci_devices;
 	__u32 num_pci_caps;
+	__u32 num_regmaps;
 	__u32 streamIDs[JAILHOUSE_MAX_STREAMIDS];
 
 	__u32 vpci_irq_base;
@@ -153,6 +154,14 @@ struct jailhouse_irqchip {
 	__u32 id;
 	__u32 pin_base;
 	__u32 pin_bitmap[4];
+} __attribute__((packed));
+
+struct jailhouse_regmap {
+	__u64 reg_base;
+	__u32 reg_count;
+	__u8 reg_size;
+	__u32 flags;
+	__u32 reg_bitmap[8];
 } __attribute__((packed));
 
 #define JAILHOUSE_PCI_TYPE_DEVICE	0x01
@@ -307,7 +316,8 @@ jailhouse_cell_config_size(struct jailhouse_cell_desc *cell)
 		cell->num_irqchips * sizeof(struct jailhouse_irqchip) +
 		cell->pio_bitmap_size +
 		cell->num_pci_devices * sizeof(struct jailhouse_pci_device) +
-		cell->num_pci_caps * sizeof(struct jailhouse_pci_capability);
+		cell->num_pci_caps * sizeof(struct jailhouse_pci_capability) +
+		cell->num_regmaps * sizeof(struct jailhouse_regmap);
 }
 
 static inline __u32
@@ -368,6 +378,14 @@ jailhouse_cell_pci_caps(const struct jailhouse_cell_desc *cell)
 	return (const struct jailhouse_pci_capability *)
 		((void *)jailhouse_cell_pci_devices(cell) +
 		 cell->num_pci_devices * sizeof(struct jailhouse_pci_device));
+}
+
+static inline const struct jailhouse_regmap *
+jailhouse_cell_regmaps(const struct jailhouse_cell_desc *cell)
+{
+	return (const struct jailhouse_regmap *)
+		((void *)jailhouse_cell_pci_caps(cell) +
+		 cell->num_pci_caps * sizeof(struct jailhouse_pci_capability));
 }
 
 #endif /* !_JAILHOUSE_CELL_CONFIG_H */
