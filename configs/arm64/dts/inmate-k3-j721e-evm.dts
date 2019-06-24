@@ -1,0 +1,210 @@
+/dts-v1/;
+
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/soc/ti,sci_pm_domain.h>
+#include <dt-bindings/pinctrl/k3.h>
+
+/ {
+	model = "Texas Instruments J721E Inmate Model";
+	compatible = "ti,j721e-evm", "ti,j721e";
+	interrupt-parent = <&gic500>;
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	aliases {
+		serial1 = &main_uart1;
+	};
+
+	chosen {
+		stdout-path = "serial1:115200n8";
+	};
+
+	memory@8a0000000 {
+		device_type = "memory";
+		reg = <0x8 0xa0000000 0x0 0x60000000>;
+	};
+
+	hypervisor {
+		compatible = "jailhouse,cell";
+	};
+
+	cpus: cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu0: cpu@1 {
+			compatible = "arm,cortex-a72","arm,armv8";
+			reg = <0x001>;
+			device_type = "cpu";
+			enable-method = "psci";
+		};
+	};
+
+	timer-cl0-cpu0 {
+		compatible = "arm,armv8-timer";
+		interrupts = <GIC_PPI 13 IRQ_TYPE_LEVEL_LOW>, /* cntpsirq */
+			     <GIC_PPI 14 IRQ_TYPE_LEVEL_LOW>, /* cntpnsirq */
+			     <GIC_PPI 11 IRQ_TYPE_LEVEL_LOW>, /* cntvirq */
+			     <GIC_PPI 10 IRQ_TYPE_LEVEL_LOW>; /* cnthpirq */
+	};
+
+	psci: psci {
+		compatible = "arm,psci-1.0";
+		method = "smc";
+	};
+
+	pmu: pmu {
+		compatible = "arm,armv8-pmuv3";
+		/* Recommendation from GIC500 TRM Table A.3 */
+		interrupts = <GIC_PPI 7 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+
+	pci@76000000 {
+		compatible = "pci-host-ecam-generic";
+		device_type = "pci";
+		bus-range = <0 0>;
+		#address-cells = <3>;
+		#size-cells = <2>;
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0 0 0 7>;
+		interrupt-map =
+		<0 0 0 1 &gic500 0 0 GIC_SPI 163 IRQ_TYPE_EDGE_RISING>,
+		<0 0 0 2 &gic500 0 0 GIC_SPI 164 IRQ_TYPE_EDGE_RISING>,
+		<0 0 0 3 &gic500 0 0 GIC_SPI 165 IRQ_TYPE_EDGE_RISING>,
+		<0 0 0 4 &gic500 0 0 GIC_SPI 166 IRQ_TYPE_EDGE_RISING>;
+		reg = <0x0 0x76000000 0x0 0x100000>;
+		ranges =
+		<0x02000000 0x00 0x10000000 0x0 0x10000000 0x00 0x10000>;
+	};
+
+	soc0: soc0 {
+		compatible = "simple-bus";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		gic500: interrupt-controller@1800000 {
+			compatible = "arm,gic-v3";
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges;
+			#interrupt-cells = <3>;
+			interrupt-controller;
+			reg = <0x00 0x01800000 0x00 0x10000>,	/* GICD */
+			<0x00 0x01900000 0x00 0x100000>;	/* GICR */
+
+			/* vcpumntirq: virtual CPU interface maintenance interrupt */
+			interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
+		dmsc: dmsc@44083000 {
+			compatible = "ti,k2g-sci";
+			ti,host-id = <13>;
+
+			mbox-names = "rx", "tx";
+
+			mboxes= <&secure_proxy_main 16>,
+				<&secure_proxy_main 18>;
+
+			reg-names = "debug_messages";
+			reg = <0x00 0x44083000 0x0 0x1000>;
+
+			k3_pds: power-controller {
+				compatible = "ti,sci-pm-domain";
+				#power-domain-cells = <2>;
+			};
+
+			k3_clks: clocks {
+				compatible = "ti,k2g-sci-clk";
+				#clock-cells = <2>;
+				ti,scan-clocks-from-dt;
+			};
+
+			k3_reset: reset-controller {
+				compatible = "ti,sci-reset";
+				#reset-cells = <2>;
+			};
+		};
+
+		main_navss_intr: interrupt-controller1 {
+			compatible = "ti,sci-intr";
+			interrupt-controller;
+			interrupt-parent = <&gic500>;
+			#interrupt-cells = <3>;
+			ti,sci = <&dmsc>;
+			ti,sci-dst-id = <14>;
+			ti,sci-rm-range-girq = <4>;
+		};
+
+		secure_proxy_main: mailbox@32c00000 {
+			compatible = "ti,am654-secure-proxy";
+			#mbox-cells = <1>;
+			reg-names = "target_data", "rt", "scfg";
+			reg = <0x00 0x32c00000 0x00 0x100000>,
+			<0x00 0x32400000 0x00 0x100000>,
+			<0x00 0x32800000 0x00 0x100000>;
+			interrupt-names = "rx_016";
+			interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
+		main_pmx0: pinmux@11c000 {
+			compatible = "pinctrl-single";
+			/* Proxy 0 addressing */
+			reg = <0x0 0x11c000 0x0 0x2b4>;
+			#pinctrl-cells = <1>;
+			pinctrl-single,register-width = <32>;
+			pinctrl-single,function-mask = <0xffffffff>;
+		};
+
+		main_uart1: serial@2810000 {
+			compatible = "ti,j721e-uart", "ti,am654-uart";
+			reg = <0x00 0x02810000 0x00 0x100>;
+			reg-shift = <2>;
+			reg-io-width = <4>;
+			interrupts = <GIC_SPI 193 IRQ_TYPE_LEVEL_HIGH>;
+			clock-frequency = <48000000>;
+			current-speed = <115200>;
+			power-domains = <&k3_pds 278 TI_SCI_PD_EXCLUSIVE>;
+			clocks = <&k3_clks 278 0>;
+			clock-names = "fclk";
+		};
+
+		main_sdhci0: sdhci@4f80000 {
+			compatible = "ti,j721e-sdhci-8bit";
+			reg = <0x0 0x4f80000 0x0 0x1000>, <0x0 0x4f88000 0x0 0x400>;
+			interrupts = <GIC_SPI 3 IRQ_TYPE_LEVEL_HIGH>;
+			power-domains = <&k3_pds 91 TI_SCI_PD_SHARED>;
+			clock-names = "clk_xin", "clk_ahb";
+			clocks = <&k3_clks 91 1>, <&k3_clks 91 0>;
+			assigned-clocks = <&k3_clks 91 1>;
+			assigned-clock-parents = <&k3_clks 91 2>;
+			bus-width = <8>;
+			ti,otap-del-sel = <0x2>;
+			ti,trm-icp = <0x8>;
+			ti,strobe-sel = <0x77>;
+			dma-coherent;
+		};
+	};
+};
+
+&main_pmx0 {
+	main_uart1_pins_default: main_uart1_pins_default {
+		pinctrl-single,pins = <
+                        J721E_IOPAD(0x1f8, PIN_INPUT, 0) /* (AA4) UART1_RXD */
+                        J721E_IOPAD(0x1fc, PIN_OUTPUT, 0) /* (AB4) UART1_TXD */
+		>;
+	};
+};
+
+&main_uart1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&main_uart1_pins_default>;
+};
+
+&main_sdhci0 {
+	non-removable;
+	ti,driver-strength-ohm = <50>;
+	mmc-hs400-1_8v;
+};
