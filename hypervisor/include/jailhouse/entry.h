@@ -21,6 +21,7 @@
 #define EPERM		1
 #define ENOENT		2
 #define EIO		5
+#define	ENXIO		6
 #define E2BIG		7
 #define ENOMEM		12
 #define EBUSY		16
