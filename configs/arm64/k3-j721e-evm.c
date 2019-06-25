@@ -50,6 +50,13 @@ struct {
 				.gicr_base = 0x01900000,
 				.maintenance_irq = 25,
 			},
+			.arm.iommu_units= {
+				{
+					.type = JAILHOUSE_IOMMU_SMMUV3,
+					.smmuv3.smmu_base = 0x36600000,
+					.smmuv3.smmu_size = 0x100000,
+				},
+			},
 		},
 		.root_cell = {
 			.name = "k3-j721e-evm",
@@ -59,6 +66,9 @@ struct {
 			.num_irqchips = ARRAY_SIZE(config.irqchips),
 			.num_pci_devices = ARRAY_SIZE(config.pci_devices),
 			.vpci_irq_base = 191 - 32,
+			.streamIDs = { 256, 257, 258, 259, 260, 261, 262,
+				       263, 264, 265, 266, 267, 268, 269, 270,
+				       JAILHOUSE_INVALID_STREAMID },
 		},
 	},
 
