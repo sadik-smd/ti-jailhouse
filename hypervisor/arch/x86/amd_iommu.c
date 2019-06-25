@@ -448,14 +448,14 @@ static void amd_iommu_init_fault_nmi(void)
 		    &system_config->platform_info.x86.iommu_units[iommu->idx];
 
 		/* Disable MSI during interrupt reprogramming. */
-		pci_write_config(cfg->amd_bdf, cfg->amd_msi_cap + 2 , 0, 2);
+		pci_write_config(cfg->amd.bdf, cfg->amd.msi_cap + 2 , 0, 2);
 
 		/*
 		 * Write new MSI capability block, re-enabling interrupts with
 		 * the last word.
 		 */
 		for (n = 3; n >= 0; n--)
-			pci_write_config(cfg->amd_bdf, cfg->amd_msi_cap + 4 * n,
+			pci_write_config(cfg->amd.bdf, cfg->amd.msi_cap + 4 * n,
 					 msi_reg.raw[n], 4);
 	}
 
@@ -633,37 +633,37 @@ static int amd_iommu_init_pci(struct amd_iommu *entry,
 	u64 caps_header, hi, lo;
 
 	/* Check alignment */
-	if (iommu->size & (iommu->size - 1))
+	if (iommu->amd.size & (iommu->amd.size - 1))
 		return trace_error(-EINVAL);
 
 	/* Check that EFR is supported */
-	caps_header = pci_read_config(iommu->amd_bdf, iommu->amd_base_cap, 4);
+	caps_header = pci_read_config(iommu->amd.bdf, iommu->amd.base_cap, 4);
 	if (!(caps_header & CAPS_IOMMU_EFR_SUP))
 		return trace_error(-EIO);
 
-	lo = pci_read_config(iommu->amd_bdf,
-			     iommu->amd_base_cap + CAPS_IOMMU_BASE_LOW_REG, 4);
-	hi = pci_read_config(iommu->amd_bdf,
-			     iommu->amd_base_cap + CAPS_IOMMU_BASE_HI_REG, 4);
+	lo = pci_read_config(iommu->amd.bdf,
+			     iommu->amd.base_cap + CAPS_IOMMU_BASE_LOW_REG, 4);
+	hi = pci_read_config(iommu->amd.bdf,
+			     iommu->amd.base_cap + CAPS_IOMMU_BASE_HI_REG, 4);
 
 	if (lo & CAPS_IOMMU_ENABLE &&
-	    ((hi << 32) | lo) != (iommu->base | CAPS_IOMMU_ENABLE)) {
+	    ((hi << 32) | lo) != (iommu->amd.base | CAPS_IOMMU_ENABLE)) {
 		printk("FATAL: IOMMU %d config is locked in invalid state.\n",
 		       entry->idx);
 		return trace_error(-EPERM);
 	}
 
 	/* Should be configured by BIOS, but we want to be sure */
-	pci_write_config(iommu->amd_bdf,
-			 iommu->amd_base_cap + CAPS_IOMMU_BASE_HI_REG,
-			 (u32)(iommu->base >> 32), 4);
-	pci_write_config(iommu->amd_bdf,
-			 iommu->amd_base_cap + CAPS_IOMMU_BASE_LOW_REG,
-			 (u32)(iommu->base & 0xffffffff) | CAPS_IOMMU_ENABLE,
+	pci_write_config(iommu->amd.bdf,
+			 iommu->amd.base_cap + CAPS_IOMMU_BASE_HI_REG,
+			 (u32)(iommu->amd.base >> 32), 4);
+	pci_write_config(iommu->amd.bdf,
+			 iommu->amd.base_cap + CAPS_IOMMU_BASE_LOW_REG,
+			 (u32)(iommu->amd.base & 0xffffffff) | CAPS_IOMMU_ENABLE,
 			 4);
 
 	/* Allocate and map MMIO space */
-	entry->mmio_base = paging_map_device(iommu->base, iommu->size);
+	entry->mmio_base = paging_map_device(iommu->amd.base, iommu->amd.size);
 	if (!entry->mmio_base)
 		return -ENOMEM;
 
@@ -687,9 +687,9 @@ static int amd_iommu_init_features(struct amd_iommu *entry,
 		return trace_error(-EIO);
 
 	/* Figure out if hardware events are supported. */
-	if (iommu->amd_features)
+	if (iommu->amd.features)
 		entry->he_supported =
-			iommu->amd_features & ACPI_REPORTING_HE_SUP;
+			iommu->amd.features & ACPI_REPORTING_HE_SUP;
 	else
 		entry->he_supported = efr & AMD_EXT_FEAT_HE_SUP;
 
@@ -777,20 +777,24 @@ static int amd_iommu_init(void)
 {
 	struct jailhouse_iommu *iommu;
 	struct amd_iommu *entry;
-	unsigned int n;
+	unsigned int i;
 	int err;
 
-	iommu = &system_config->platform_info.x86.iommu_units[0];
-	for (n = 0; iommu->base && n < iommu_count_units(); iommu++, n++) {
+	for (i = 0; i < JAILHOUSE_MAX_IOMMU_UNITS; i++) {
+
+		iommu = &system_config->platform_info.x86.iommu_units[i];
+		if (iommu->type != JAILHOUSE_IOMMU_AMD)
+			continue;
+
 		entry = &iommu_units[iommu_units_count];
 
-		entry->idx = n;
+		entry->idx = i;
 
 		/* Protect against accidental VT-d configs. */
-		if (!iommu->amd_bdf)
+		if (!iommu->amd.bdf)
 			return trace_error(-EINVAL);
 
-		printk("AMD IOMMU @0x%llx/0x%x\n", iommu->base, iommu->size);
+		printk("AMD IOMMU @0x%llx/0x%x\n", iommu->amd.base, iommu->amd.size);
 
 		/* Initialize PCI registers and MMIO space */
 		err = amd_iommu_init_pci(entry, iommu);

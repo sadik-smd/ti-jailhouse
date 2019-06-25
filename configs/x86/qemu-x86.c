@@ -50,8 +50,9 @@ struct {
 				.vtd_interrupt_limit = 256,
 				.iommu_units = {
 					{
-						.base = 0xfed90000,
-						.size = 0x1000,
+						.type = JAILHOUSE_IOMMU_INTEL,
+						.intel.base = 0xfed90000,
+						.intel.size = 0x1000,
 					},
 				},
 			},

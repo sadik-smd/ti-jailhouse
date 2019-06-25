@@ -196,13 +196,31 @@ struct jailhouse_pci_capability {
 
 #define JAILHOUSE_MAX_IOMMU_UNITS	8
 
-struct jailhouse_iommu {
+enum jailhouse_iommu_type {
+	JAILHOUSE_IOMMU_AMD,
+	JAILHOUSE_IOMMU_INTEL,
+};
+
+struct jailhouse_iommu_amd {
 	__u64 base;
 	__u32 size;
-	__u16 amd_bdf;
-	__u8 amd_base_cap;
-	__u8 amd_msi_cap;
-	__u32 amd_features;
+	__u16 bdf;
+	__u8 base_cap;
+	__u8 msi_cap;
+	__u32 features;
+};
+
+struct jailhouse_iommu_intel {
+	__u64 base;
+	__u32 size;
+};
+
+struct jailhouse_iommu {
+	__u32 type;
+	union {
+		struct jailhouse_iommu_amd amd;
+		struct jailhouse_iommu_intel intel;
+	};
 } __attribute__((packed));
 
 #define JAILHOUSE_SYSTEM_SIGNATURE	"JHSYST"

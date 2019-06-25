@@ -207,7 +207,7 @@ static bool dmar_units_initialized;
 
 static unsigned int vtd_mmio_count_regions(struct cell *cell)
 {
-	return cell == &root_cell ? iommu_count_units() : 0;
+	return cell == &root_cell ? JAILHOUSE_MAX_IOMMU_UNITS : 0;
 }
 
 static unsigned int inv_queue_write(void *inv_queue, unsigned int index,
@@ -959,7 +959,7 @@ static int vtd_init_ir_emulation(unsigned int unit_no, void *reg_base)
 
 	root_cell.arch.vtd.ir_emulation = true;
 
-	base = system_config->platform_info.x86.iommu_units[unit_no].base;
+	base = system_config->platform_info.x86.iommu_units[unit_no].intel.base;
 	mmio_region_register(&root_cell, base, PAGE_SIZE,
 			     vtd_unit_access_handler, unit);
 
@@ -1008,9 +1008,7 @@ static int vtd_init(void)
 
 	int_remap_table_size_log2 = n;
 
-	units = iommu_count_units();
-	if (units == 0)
-		return trace_error(-EINVAL);
+	units = JAILHOUSE_MAX_IOMMU_UNITS;
 
 	dmar_reg_base = page_alloc(&remap_pool, units * PAGES(DMAR_MMIO_SIZE));
 	if (!dmar_reg_base)
@@ -1022,11 +1020,13 @@ static int vtd_init(void)
 
 	for (n = 0; n < units; n++) {
 		unit = &system_config->platform_info.x86.iommu_units[n];
+		if (unit->type != JAILHOUSE_IOMMU_INTEL)
+			continue;
 
 		reg_base = dmar_reg_base + n * DMAR_MMIO_SIZE;
 
-		err = paging_create(&hv_paging_structs, unit->base, unit->size,
-				    (unsigned long)reg_base,
+		err = paging_create(&hv_paging_structs, unit->intel.base,
+				    unit->intel.size, (unsigned long)reg_base,
 				    PAGE_DEFAULT_FLAGS | PAGE_FLAG_DEVICE,
 				    PAGING_NON_COHERENT);
 		if (err)
@@ -1036,7 +1036,8 @@ static int vtd_init(void)
 		if (version < VTD_VER_MIN || version == 0xff)
 			return trace_error(-EIO);
 
-		printk("DMAR unit @0x%llx/0x%x\n", unit->base, unit->size);
+		printk("DMAR unit @0x%llx/0x%x\n", unit->intel.base,
+			unit->intel.size);
 
 		caps = mmio_read64(reg_base + VTD_CAP_REG);
 		if (caps & VTD_CAP_SAGAW39)

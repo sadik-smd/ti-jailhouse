@@ -15,16 +15,6 @@
 
 unsigned int fault_reporting_cpu_id;
 
-unsigned int iommu_count_units(void)
-{
-	unsigned int units = 0;
-
-	while (units < JAILHOUSE_MAX_IOMMU_UNITS &&
-	       system_config->platform_info.x86.iommu_units[units].base)
-		units++;
-	return units;
-}
-
 struct public_per_cpu *iommu_select_fault_reporting_cpu(void)
 {
 	struct public_per_cpu *target_data;
