@@ -50,7 +50,7 @@
  * Incremented on any layout or semantic change of system or cell config.
  * Also update HEADER_REVISION in tools.
  */
-#define JAILHOUSE_CONFIG_REVISION	10
+#define JAILHOUSE_CONFIG_REVISION	11
 
 #define JAILHOUSE_CELL_NAME_MAXLEN	31
 
@@ -74,6 +74,9 @@
 
 #define JAILHOUSE_CELL_DESC_SIGNATURE	"JHCELL"
 
+#define JAILHOUSE_MAX_STREAMIDS				32
+#define JAILHOUSE_INVALID_STREAMID			(~0)
+
 /**
  * The jailhouse cell configuration.
  *
@@ -95,6 +98,7 @@ struct jailhouse_cell_desc {
 	__u32 pio_bitmap_size;
 	__u32 num_pci_devices;
 	__u32 num_pci_caps;
+	__u32 streamIDs[JAILHOUSE_MAX_STREAMIDS];
 
 	__u32 vpci_irq_base;
 
