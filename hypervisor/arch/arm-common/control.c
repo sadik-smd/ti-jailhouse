@@ -16,6 +16,7 @@
 #include <jailhouse/printk.h>
 #include <asm/control.h>
 #include <asm/psci.h>
+#include <asm/iommu.h>
 
 static void enter_cpu_off(struct public_per_cpu *cpu_public)
 {
@@ -208,7 +209,12 @@ void arch_flush_cell_vcpu_caches(struct cell *cell)
 
 void arch_config_commit(struct cell *cell_added_removed)
 {
+	u8 err;
+
 	irqchip_config_commit(cell_added_removed);
+	err = iommu_config_commit(cell_added_removed);
+	if (err)
+		printk("WARNING: iommu_config_commit failed\n");
 }
 
 void __attribute__((noreturn)) arch_panic_stop(void)
