@@ -203,6 +203,7 @@ struct jailhouse_pci_capability {
 enum jailhouse_iommu_type {
 	JAILHOUSE_IOMMU_AMD,
 	JAILHOUSE_IOMMU_INTEL,
+	JAILHOUSE_IOMMU_SMMUV3,
 };
 
 struct jailhouse_iommu_amd {
@@ -219,11 +220,17 @@ struct jailhouse_iommu_intel {
 	__u32 size;
 };
 
+struct jailhouse_iommu_smmuv3 {
+	__u64 smmu_base;
+	__u32 smmu_size;
+};
+
 struct jailhouse_iommu {
 	__u32 type;
 	union {
 		struct jailhouse_iommu_amd amd;
 		struct jailhouse_iommu_intel intel;
+		struct jailhouse_iommu_smmuv3 smmuv3;
 	};
 } __attribute__((packed));
 
