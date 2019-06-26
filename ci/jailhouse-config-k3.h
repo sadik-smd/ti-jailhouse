@@ -1,1 +1,2 @@
 #define CONFIG_TRACE_ERROR		1
+#define CONFIG_IOMMU_PVU		1
