@@ -21,3 +21,7 @@ always := lib.a
 
 lib-y := $(common-objs-y)
 lib-y += entry.o setup.o control.o mmio.o paging.o caches.o traps.o smmu-v3.o
+
+#ifdef CONFIG_IOMMU_PVU
+lib-y += ti-navss-pvu.o
+#endif
