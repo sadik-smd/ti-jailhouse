@@ -20,6 +20,7 @@
 
 extern volatile unsigned long panic_in_progress;
 extern unsigned long panic_cpu;
+extern const u8 empty_page[PAGE_SIZE];
 
 /**
  * @defgroup Control Control Subsystem

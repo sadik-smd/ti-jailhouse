@@ -39,9 +39,16 @@ int arch_map_memory_region(struct cell *cell,
 		flags |= S2_PAGE_ACCESS_XN;
 	*/
 
-	err = iommu_map_memory_region(cell, mem);
-	if (err)
-		return err;
+	/*
+	 * Entire hypervisor memory is mapped to empty_page to avoid faults
+	 * at the shutdown. We don't need this in the IOMMU mapping
+	 * Skip mapping empty_page in the iommu mapping
+	 */
+	if (mem->phys_start != paging_hvirt2phys(empty_page)) {
+		err = iommu_map_memory_region(cell, mem);
+		if (err)
+			return err;
+	}
 
 	return paging_create(&cell->arch.mm, phys_start, mem->size,
 			     mem->virt_start, flags, PAGING_COHERENT);
@@ -52,9 +59,15 @@ int arch_unmap_memory_region(struct cell *cell,
 {
 	int err = 0;
 
-	err = iommu_unmap_memory_region(cell, mem);
-	if (err)
-		return err;
+	/*
+	 * empty_page is not mapped in the iommu
+	 * Skip all the calls to unmap as well
+	 */
+	if (mem->phys_start != paging_hvirt2phys(empty_page)) {
+		err = iommu_unmap_memory_region(cell, mem);
+		if (err)
+			return err;
+	}
 
 	return paging_destroy(&cell->arch.mm, mem->virt_start, mem->size,
 			      PAGING_COHERENT);
