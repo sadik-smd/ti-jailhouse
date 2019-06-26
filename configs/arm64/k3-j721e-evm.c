@@ -56,6 +56,27 @@ struct {
 					.smmuv3.smmu_base = 0x36600000,
 					.smmuv3.smmu_size = 0x100000,
 				},
+				{
+					.type = JAILHOUSE_IOMMU_PVU,
+					.pvu.cfg_base = 0x30f80000,
+					.pvu.cfg_size = 0x1000,
+					.pvu.tlb_base = 0x36000000,
+					.pvu.tlb_size  = 0x40000,
+				},
+				{
+					.type = JAILHOUSE_IOMMU_PVU,
+					.pvu.cfg_base = 0x30f81000,
+					.pvu.cfg_size = 0x1000,
+					.pvu.tlb_base = 0x36040000,
+					.pvu.tlb_size  = 0x40000,
+				},
+				{
+					.type = JAILHOUSE_IOMMU_PVU,
+					.pvu.cfg_base = 0x30f83000,
+					.pvu.cfg_size = 0x1000,
+					.pvu.tlb_base = 0x360c0000,
+					.pvu.tlb_size  = 0x40000,
+				},
 			},
 		},
 		.root_cell = {
