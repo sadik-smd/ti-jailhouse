@@ -40,6 +40,7 @@ struct {
 		.pio_bitmap_size = 0,
 		.cpu_reset_address = 0x0,
 		.vpci_irq_base = 195 - 32,
+		.streamIDs = { 3, JAILHOUSE_INVALID_STREAMID },
 		.console = {
 			.address = 0x2810000,
 			.divider = 0x1b,
