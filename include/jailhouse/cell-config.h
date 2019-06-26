@@ -204,6 +204,7 @@ enum jailhouse_iommu_type {
 	JAILHOUSE_IOMMU_AMD,
 	JAILHOUSE_IOMMU_INTEL,
 	JAILHOUSE_IOMMU_SMMUV3,
+	JAILHOUSE_IOMMU_PVU,
 };
 
 struct jailhouse_iommu_amd {
@@ -225,12 +226,20 @@ struct jailhouse_iommu_smmuv3 {
 	__u32 smmu_size;
 };
 
+struct jailhouse_iommu_pvu {
+	__u64 cfg_base;
+	__u32 cfg_size;
+	__u64 tlb_base;
+	__u32 tlb_size;
+};
+
 struct jailhouse_iommu {
 	__u32 type;
 	union {
 		struct jailhouse_iommu_amd amd;
 		struct jailhouse_iommu_intel intel;
 		struct jailhouse_iommu_smmuv3 smmuv3;
+		struct jailhouse_iommu_pvu pvu;
 	};
 } __attribute__((packed));
 
