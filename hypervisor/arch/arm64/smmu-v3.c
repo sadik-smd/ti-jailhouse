@@ -625,7 +625,6 @@ static int arm_smmu_init_l1_strtab(struct arm_smmu_device *smmu)
 	for (i = 0; i < cfg->num_l1_ents; ++i) {
 		memset(&cfg->l1_desc[i], 0, sizeof(*cfg->l1_desc));
 		arm_smmu_write_strtab_l1_desc(strtab, &cfg->l1_desc[i]);
-		cfg->l1_desc[i].active_stes = 0;
 		strtab += STRTAB_L1_DESC_SIZE;
 	}
 
