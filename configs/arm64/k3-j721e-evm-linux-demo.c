@@ -26,7 +26,7 @@ struct {
 	struct jailhouse_memory mem_regions[20];
 	struct jailhouse_irqchip irqchips[3];
 	struct jailhouse_pci_device pci_devices[1];
-	__u32 stream_ids[1];
+	__u32 stream_ids[2];
 	struct jailhouse_regmap regmaps[1];
 } __attribute__((packed)) config = {
 	.cell = {
@@ -57,7 +57,7 @@ struct {
 		0x2,
 	},
 
-	.stream_ids =  { 3, },
+	.stream_ids =  { 3, 0xf003, },
 
 	.mem_regions = {
 		/* IVSHMEM shared memory region for 00:00.0 */ {
