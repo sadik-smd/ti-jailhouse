@@ -359,19 +359,6 @@ static __u64 *queue_entry(struct arm_smmu_queue *q, u32 reg)
 	return q->base + (Q_IDX(reg, q->max_n_shift) * q->ent_dwords);
 }
 
-static int queue_insert_raw(struct arm_smmu_queue *q, __u64 *ent)
-{
-	while (queue_full(q))
-	{}
-
-	queue_write(queue_entry(q, q->prod), ent, q->ent_dwords);
-	queue_inc_prod(q);
-	while (!queue_empty(q) && !queue_error(smmu, q)) {
-		queue_sync_cons(q);
-	}
-	return 0;
-}
-
 /* High-level queue accessors */
 static int arm_smmu_cmdq_build_cmd(__u64 *cmd, struct arm_smmu_cmdq_ent *ent)
 {
@@ -436,7 +423,14 @@ static void arm_smmu_cmdq_insert_cmd(struct arm_smmu_device *smmu, __u64 *cmd)
 {
 	struct arm_smmu_queue *q = &smmu->cmdq.q;
 
-	queue_insert_raw(q, cmd);
+	while (queue_full(q))
+	{}
+
+	queue_write(queue_entry(q, q->prod), cmd, q->ent_dwords);
+	queue_inc_prod(q);
+	while (!queue_empty(q) && !queue_error(smmu, q)) {
+		queue_sync_cons(q);
+	}
 }
 
 static void arm_smmu_cmdq_issue_cmd(struct arm_smmu_device *smmu,
