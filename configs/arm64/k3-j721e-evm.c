@@ -22,6 +22,7 @@ struct {
 	struct jailhouse_memory mem_regions[29];
 	struct jailhouse_irqchip irqchips[6];
 	struct jailhouse_pci_device pci_devices[1];
+	__u32 stream_ids[16];
 	struct jailhouse_regmap regmaps[1];
 } __attribute__((packed)) config = {
 	.header = {
@@ -87,17 +88,19 @@ struct {
 			.num_memory_regions = ARRAY_SIZE(config.mem_regions),
 			.num_irqchips = ARRAY_SIZE(config.irqchips),
 			.num_pci_devices = ARRAY_SIZE(config.pci_devices),
+			.num_stream_ids = ARRAY_SIZE(config.stream_ids),
 			.num_regmaps = ARRAY_SIZE(config.regmaps),
 			.vpci_irq_base = 191 - 32,
-			.streamIDs = { 2, 256, 257, 258, 259, 260, 261, 262,
-				       263, 264, 265, 266, 267, 268, 269, 270,
-				       JAILHOUSE_INVALID_STREAMID },
+
 		},
 	},
 
 	.cpus = {
 		0x3,
 	},
+
+	.stream_ids = { 2, 256, 257, 258, 259, 260, 261, 262,
+			263, 264, 265, 266, 267, 268, 269, 270, },
 
 	.mem_regions = {
 		/* IVSHMEM shared memory region for 00:00.0 */ {

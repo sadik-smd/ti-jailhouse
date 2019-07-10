@@ -18,6 +18,10 @@
 #include <jailhouse/config.h>
 #include <jailhouse/cell-config.h>
 
+#define for_each_stream_id(sid, config, counter)			       \
+	for ((sid) = (jailhouse_cell_stream_ids(config)[0]), (counter) = 0;    \
+	     (counter) < (config)->num_stream_ids;			       \
+	     (sid) = (jailhouse_cell_stream_ids(config)[++(counter)]))
 
 int pvu_iommu_map_memory(struct cell *cell,
 		const struct jailhouse_memory *mem);

@@ -955,22 +955,18 @@ static int arm_smmuv3_cell_init(struct cell *cell)
 {
 	struct jailhouse_iommu *iommu;
 	struct arm_smmu_cmdq_ent cmd;
-	int ret, i, sid;
+	int ret, i, j, sid;
 
 	for (i = 0; i < JAILHOUSE_MAX_IOMMU_UNITS; i++) {
 		iommu = &system_config->platform_info.arm.iommu_units[i];
 		if (iommu->type != JAILHOUSE_IOMMU_SMMUV3)
 			continue;
 
-		for (sid = 0; sid < ARRAY_SIZE(cell->config->streamIDs); sid++) {
-			if (cell->config->streamIDs[sid] == JAILHOUSE_INVALID_STREAMID)
-				break;
-			ret = arm_smmu_init_ste(&smmu[i],
-						cell->config->streamIDs[sid],
-						cell->config->id);
+		for_each_stream_id(sid, cell->config, j) {
+			ret = arm_smmu_init_ste(&smmu[i], sid, cell->config->id);
 			if (ret) {
 				printk("ERROR: SMMU INIT ste failed: sid = %d\n",
-				       cell->config->streamIDs[sid]);
+				       sid);
 				return ret;
 			}
 		}
@@ -987,18 +983,15 @@ static int arm_smmuv3_cell_init(struct cell *cell)
 static void arm_smmuv3_cell_exit(struct cell *cell)
 {
 	struct jailhouse_iommu *iommu;
-	int i, sid;
+	int i, j, sid;
 
 	for (i = 0; i < JAILHOUSE_MAX_IOMMU_UNITS; i++) {
 		iommu = &system_config->platform_info.arm.iommu_units[i];
 		if (iommu->type != JAILHOUSE_IOMMU_SMMUV3)
 			continue;
 
-		for (sid = 0; sid < ARRAY_SIZE(cell->config->streamIDs); sid++) {
-			if (cell->config->streamIDs[sid] == JAILHOUSE_INVALID_STREAMID)
-				break;
-			arm_smmu_uninit_ste(&smmu[i],
-					    cell->config->streamIDs[sid], cell->config->id);
+		for_each_stream_id(sid, cell->config, j) {
+			arm_smmu_uninit_ste(&smmu[i], sid, cell->config->id);
 		}
 	}
 

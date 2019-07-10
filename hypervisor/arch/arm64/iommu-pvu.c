@@ -157,10 +157,7 @@ int pvu_iommu_config_commit(struct cell *cell)
 
 	pvu_entrylist_sort(cell->arch.iommu_pvu.entries, cell->arch.iommu_pvu.ent_count);
 
-	for (i = 0; i < ARRAY_SIZE(cell->config->streamIDs); i++) {
-		virtid = cell->config->streamIDs[i];
-		if (virtid == JAILHOUSE_INVALID_STREAMID)
-			break;
+	for_each_stream_id(virtid, cell->config, i) {
 		if (virtid > MAX_VIRTID)
 			continue;
 
@@ -187,11 +184,7 @@ static int pvu_iommu_cell_init(struct cell *cell)
 		return -ENOMEM;
 
 	dev = &pvu_units[0];
-	for (i = 0; i < ARRAY_SIZE(cell->config->streamIDs); i++) {
-
-		virtid = cell->config->streamIDs[i];
-		if (virtid == JAILHOUSE_INVALID_STREAMID)
-			break;
+	for_each_stream_id(virtid, cell->config, i) {
 		if (virtid > MAX_VIRTID)
 			continue;
 
@@ -228,11 +221,7 @@ static void pvu_iommu_cell_exit(struct cell *cell)
 	if (pvu_count == 0)
 		return;
 
-	for (i = 0; i < ARRAY_SIZE(cell->config->streamIDs); i++) {
-
-		virtid = cell->config->streamIDs[i];
-		if (virtid == JAILHOUSE_INVALID_STREAMID)
-			break;
+	for_each_stream_id(virtid, cell->config, i) {
 		if (virtid > MAX_VIRTID)
 			continue;
 

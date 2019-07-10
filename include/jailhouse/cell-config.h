@@ -74,7 +74,6 @@
 
 #define JAILHOUSE_CELL_DESC_SIGNATURE	"JHCELL"
 
-#define JAILHOUSE_MAX_STREAMIDS				32
 #define JAILHOUSE_INVALID_STREAMID			(~0)
 
 /**
@@ -98,8 +97,8 @@ struct jailhouse_cell_desc {
 	__u32 pio_bitmap_size;
 	__u32 num_pci_devices;
 	__u32 num_pci_caps;
+	__u32 num_stream_ids;
 	__u32 num_regmaps;
-	__u32 streamIDs[JAILHOUSE_MAX_STREAMIDS];
 
 	__u32 vpci_irq_base;
 
@@ -317,6 +316,7 @@ jailhouse_cell_config_size(struct jailhouse_cell_desc *cell)
 		cell->pio_bitmap_size +
 		cell->num_pci_devices * sizeof(struct jailhouse_pci_device) +
 		cell->num_pci_caps * sizeof(struct jailhouse_pci_capability) +
+		cell->num_stream_ids * sizeof(__u32) +
 		cell->num_regmaps * sizeof(struct jailhouse_regmap);
 }
 
@@ -380,12 +380,19 @@ jailhouse_cell_pci_caps(const struct jailhouse_cell_desc *cell)
 		 cell->num_pci_devices * sizeof(struct jailhouse_pci_device));
 }
 
+static inline __u32 *
+jailhouse_cell_stream_ids(const struct jailhouse_cell_desc *cell)
+{
+	return (__u32 *)((void *)jailhouse_cell_pci_caps(cell) +
+		cell->num_pci_caps * sizeof(struct jailhouse_pci_capability));
+}
+
 static inline const struct jailhouse_regmap *
 jailhouse_cell_regmaps(const struct jailhouse_cell_desc *cell)
 {
 	return (const struct jailhouse_regmap *)
-		((void *)jailhouse_cell_pci_caps(cell) +
-		 cell->num_pci_caps * sizeof(struct jailhouse_pci_capability));
+		((void *)jailhouse_cell_stream_ids(cell) +
+		 cell->num_stream_ids * sizeof(__u32));
 }
 
 #endif /* !_JAILHOUSE_CELL_CONFIG_H */
