@@ -37,7 +37,10 @@
 #define ARM_SMMU_IDR0			0x0
 #define IDR0_ST_LVL			BIT_MASK(28, 27)
 #define IDR0_ST_LVL_2LVL		1
+#define IDR0_VMID16			(1 << 18)
 #define IDR0_S2P			(1 << 0)
+
+#define ARM_SMMU_VMID8_MAX_VMID		255
 
 #define ARM_SMMU_IDR1			0x4
 #define IDR1_TABLES_PRESET		(1 << 30)
@@ -547,6 +550,11 @@ static void arm_smmu_write_strtab_ent(struct arm_smmu_device *smmu, u32 sid,
 		return;
 	}
 
+	if (!(smmu->features & IDR0_VMID16) && vmid > ARM_SMMU_VMID8_MAX_VMID) {
+		printk("ERROR: 16 bit VMID not supported\n");
+		return;
+	}
+
 	dst[2] = FIELD_PREP(STRTAB_STE_2_S2VMID, vmid) |
 		 FIELD_PREP(STRTAB_STE_2_VTCR, VTCR_CELL) |
 		 STRTAB_STE_2_S2PTW | STRTAB_STE_2_S2AA64 |
@@ -871,6 +879,10 @@ static int arm_smmu_device_init_features(struct arm_smmu_device *smmu)
 	if (!(reg & IDR0_S2P)) {
 		printk("ERROR: SMMU stage2 translations not supported\n");
 		return -ENXIO;
+	}
+
+	if (FIELD_GET(IDR0_VMID16, reg)) {
+		smmu->features |= IDR0_VMID16;
 	}
 
 	/* IDR1 */
