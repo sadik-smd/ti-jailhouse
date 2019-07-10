@@ -29,6 +29,10 @@ int pvu_iommu_unmap_memory(struct cell *cell,
 		const struct jailhouse_memory *mem);
 int pvu_iommu_config_commit(struct cell *cell);
 
+#ifdef CONFIG_SMMUV3_STAGE1
+int arm_smmuv3_iommu_config_commit(struct cell *cell);
+#endif
+
 int iommu_map_memory_region(struct cell *cell,
 			    const struct jailhouse_memory *mem);
 int iommu_unmap_memory_region(struct cell *cell,

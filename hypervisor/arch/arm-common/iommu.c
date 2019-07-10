@@ -34,8 +34,19 @@ int iommu_unmap_memory_region(struct cell *cell,
 
 int iommu_config_commit(struct cell *cell)
 {
+	int ret;
+
 #ifdef CONFIG_IOMMU_PVU
-	return pvu_iommu_config_commit(cell);
+	ret = pvu_iommu_config_commit(cell);
+	if (ret)
+		return ret;
 #endif
+
+#ifdef CONFIG_SMMUV3_STAGE1
+	ret = arm_smmuv3_iommu_config_commit(cell);
+	if (ret)
+		return ret;
+#endif /* CONFIG_SMMUV3_STAGE1 */
+
 	return 0;
 }

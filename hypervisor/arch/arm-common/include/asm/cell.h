@@ -26,6 +26,9 @@ struct arch_cell {
 		u8 ent_count;
 		struct pvu_tlb_entry *entries;
 	} iommu_pvu; /**< ARM PVU specific fields. */
+#ifdef CONFIG_SMMUV3_STAGE1
+	struct arm_smmu_state *smmu_states;
+#endif
 };
 
 #endif /* !_JAILHOUSE_ASM_CELL_H */
