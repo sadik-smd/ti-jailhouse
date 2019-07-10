@@ -94,6 +94,11 @@
 #define ARM_SMMU_EVTQ_IRQ_CFG1		0xb8
 #define ARM_SMMU_EVTQ_IRQ_CFG2		0xbc
 
+#define ARM_SMMU_GERROR			0x60
+#define GERROR_CMDQ_ERR			(1 << 0)
+#define GERROR_EVTQ_ABT_ERR		(1 << 2)
+
+#define ARM_SMMU_GERRORN		0x64
 /* Common memory attribute values */
 #define ARM_SMMU_SH_NSH			0
 #define ARM_SMMU_SH_OSH			2
@@ -262,6 +267,7 @@ struct arm_smmu_queue {
 	u32	cons;
 	u32 	*prod_reg;
 	u32 	*cons_reg;
+	u32	gerr_mask;
 };
 
 struct arm_smmu_cmdq {
@@ -320,9 +326,14 @@ static void queue_sync_cons(struct arm_smmu_queue *q)
 	q->cons = mmio_read32(q->cons_reg);
 }
 
-static bool queue_error(struct arm_smmu_queue *q)
+static bool queue_error(struct arm_smmu_device *smmu, struct arm_smmu_queue *q)
 {
-	return mmio_read32(q->cons_reg) & 0x1;
+	u32 gerror, gerrorn;
+
+	gerror = mmio_read32(smmu->base + ARM_SMMU_GERROR);
+	gerrorn = mmio_read32(smmu->base + ARM_SMMU_GERRORN);
+
+	return (gerror ^ gerrorn) & q->gerr_mask;
 }
 
 static void queue_inc_prod(struct arm_smmu_queue *q)
@@ -355,7 +366,7 @@ static int queue_insert_raw(struct arm_smmu_queue *q, __u64 *ent)
 
 	queue_write(queue_entry(q, q->prod), ent, q->ent_dwords);
 	queue_inc_prod(q);
-	while (!queue_empty(q) && !queue_error(q)) {
+	while (!queue_empty(q) && !queue_error(smmu, q)) {
 		queue_sync_cons(q);
 	}
 	return 0;
@@ -653,7 +664,8 @@ static int arm_smmu_init_one_queue(struct arm_smmu_device *smmu,
 				   struct arm_smmu_queue *q,
 				   unsigned long prod_off,
 				   unsigned long cons_off,
-				   unsigned long dwords)
+				   unsigned long dwords,
+				   unsigned int gerr_mask)
 {
 	/* Queue size is capped to 4K. So allocate 1 page */
 	q->base = page_alloc(&mem_pool, 1);
@@ -661,7 +673,7 @@ static int arm_smmu_init_one_queue(struct arm_smmu_device *smmu,
 		printk("ERROR: SMMU failed to allocate queue\n");
 		return -ENOMEM;
 	}
-	q->base_dma = paging_hvirt2phys(q->base);;
+	q->base_dma = paging_hvirt2phys(q->base);
 
 	q->prod_reg	= smmu->base + prod_off;
 	q->cons_reg	= smmu->base + cons_off;
@@ -671,8 +683,8 @@ static int arm_smmu_init_one_queue(struct arm_smmu_device *smmu,
 	q->q_base |= q->base_dma & Q_BASE_ADDR_MASK;
 	q->q_base |= FIELD_PREP(Q_BASE_LOG2SIZE, q->max_n_shift);
 
-	mmio_write32(q->prod_reg, 0);
-	mmio_write32(q->cons_reg, 0);
+	q->gerr_mask = gerr_mask;
+
 	q->prod = q->cons = 0;
 	return 0;
 }
@@ -683,13 +695,15 @@ static int arm_smmu_init_queues(struct arm_smmu_device *smmu)
 
 	/* cmdq */
 	ret = arm_smmu_init_one_queue(smmu, &smmu->cmdq.q, ARM_SMMU_CMDQ_PROD,
-				      ARM_SMMU_CMDQ_CONS, CMDQ_ENT_DWORDS);
+				      ARM_SMMU_CMDQ_CONS, CMDQ_ENT_DWORDS,
+				      GERROR_CMDQ_ERR);
 	if (ret)
 		return ret;
 
 	/* evtq */
 	ret = arm_smmu_init_one_queue(smmu, &smmu->evtq.q, ARM_SMMU_EVTQ_PROD,
-				      ARM_SMMU_EVTQ_CONS, EVTQ_ENT_DWORDS);
+				      ARM_SMMU_EVTQ_CONS, EVTQ_ENT_DWORDS,
+				      GERROR_EVTQ_ABT_ERR);
 	if (ret)
 		return ret;
 
