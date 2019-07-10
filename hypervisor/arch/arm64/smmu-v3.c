@@ -355,7 +355,7 @@ static void queue_write(__u64 *dst, __u64 *src, u32 n_dwords)
 
 	for (i = 0; i < n_dwords; ++i)
 		*dst++ = *src++;
-	dsb(ish);
+	dsb(ishst);
 }
 
 static __u64 *queue_entry(struct arm_smmu_queue *q, u32 reg)
@@ -506,7 +506,7 @@ arm_smmu_write_strtab_l1_desc(__u64 *dst, struct arm_smmu_strtab_l1_desc *desc)
 
 	/* Assuming running on Little endian cpu */
 	*dst = val;
-	dsb(ish);
+	dsb(ishst);
 }
 
 static void arm_smmu_sync_ste_for_sid(struct arm_smmu_device *smmu, u32 sid)
@@ -532,16 +532,16 @@ static void arm_smmu_write_strtab_ent(struct arm_smmu_device *smmu, u32 sid,
 	/* Bypass */
 	if (bypass) {
 		dst[0] = 0;
-		dsb(ish);
+		dsb(ishst);
 		val = FIELD_PREP(STRTAB_STE_0_CFG, STRTAB_STE_0_CFG_BYPASS);
 		dst[0] = val;
 		dst[1] = FIELD_PREP(STRTAB_STE_1_SHCFG,
 				    STRTAB_STE_1_SHCFG_INCOMING);
 		dst[2] = vmid;
-		dsb(ish);
+		dsb(ishst);
 		if (smmu) {
 			dst[0] = val | STRTAB_STE_0_V;
-			dsb(ish);
+			dsb(ishst);
 			arm_smmu_sync_ste_for_sid(smmu, sid);
 		}
 		return;
@@ -556,7 +556,7 @@ static void arm_smmu_write_strtab_ent(struct arm_smmu_device *smmu, u32 sid,
 	dst[3] = vttbr & STRTAB_STE_3_S2TTB_MASK;
 
 	dst[0] = FIELD_PREP(STRTAB_STE_0_CFG, STRTAB_STE_0_CFG_S2_TRANS);
-	dsb(ish);
+	dsb(ishst);
 	dst[0] |= STRTAB_STE_0_V;
 
 	arm_smmu_sync_ste_for_sid(smmu, sid);
