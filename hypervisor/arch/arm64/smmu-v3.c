@@ -960,15 +960,14 @@ static void arm_smmu_uninit_l2_strtab(struct arm_smmu_device *smmu, u32 sid)
 	if (desc->active_stes)
 		return;
 
-	size = 1 << (STRTAB_SPLIT + STRTAB_STE_DWORDS_BITS + 3);
-	page_free(&mem_pool, desc->l2ptr, PAGES(size));
 	desc->l2ptr = NULL;
 	desc->l2ptr_dma = 0;
 	desc->span = 0;
 	strtab = &cfg->strtab[(sid >> STRTAB_SPLIT) * STRTAB_L1_DESC_DWORDS];
 	arm_smmu_write_strtab_l1_desc(strtab, desc);
 
-	return;
+	size = 1 << (STRTAB_SPLIT + STRTAB_STE_DWORDS_BITS + 3);
+	page_free(&mem_pool, desc->l2ptr, PAGES(size));
 }
 
 static __u64 *arm_smmu_get_step_for_sid(struct arm_smmu_device *smmu, u32 sid)
