@@ -904,7 +904,7 @@ static int arm_smmu_device_init_features(struct arm_smmu_device *smmu)
 				       FIELD_GET(IDR1_EVTQS, reg));
 
 	/* SID sizes */
-	smmu->sid_bits = 16;
+	smmu->sid_bits = FIELD_GET(IDR1_SIDSIZE, reg);
 
 	/*
 	 * If the SMMU supports fewer bits than would fill a single L2 stream
