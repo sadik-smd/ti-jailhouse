@@ -132,11 +132,13 @@
 #define STRTAB_SPLIT			8
 
 #define STRTAB_L1_DESC_DWORDS		1
+#define STRTAB_L1_DESC_SIZE		(STRTAB_L1_DESC_DWORDS << 3)
 #define STRTAB_L1_DESC_SPAN		BIT_MASK(4, 0)
 #define STRTAB_L1_DESC_L2PTR_MASK	BIT_MASK(51, 6)
 
-#define STRTAB_STE_DWORDS		8
 #define STRTAB_STE_DWORDS_BITS		3
+#define STRTAB_STE_DWORDS		(1 << STRTAB_STE_DWORDS_BITS)
+#define STRTAB_STE_SIZE			(STRTAB_STE_DWORDS << 3)
 #define STRTAB_STE_0_V			(1UL << 0)
 #define STRTAB_STE_0_CFG		BIT_MASK(3, 1)
 #define STRTAB_STE_0_CFG_ABORT		0
@@ -158,6 +160,7 @@
 
 /* Command queue */
 #define CMDQ_ENT_DWORDS			2
+#define CMDQ_ENT_SIZE			(CMDQ_ENT_DWORDS << 3)
 #define CMDQ_MAX_SZ_SHIFT		8
 
 #define CMDQ_CONS_ERR			BIT_MASK(30, 24)
@@ -363,7 +366,7 @@ static __u64 *queue_entry(struct arm_smmu_queue *q, u32 reg)
 /* High-level queue accessors */
 static int arm_smmu_cmdq_build_cmd(__u64 *cmd, struct arm_smmu_cmdq_ent *ent)
 {
-	memset(cmd, 0, CMDQ_ENT_DWORDS << 3);
+	memset(cmd, 0, CMDQ_ENT_SIZE);
 	cmd[0] |= FIELD_PREP(CMDQ_0_OP, ent->opcode);
 
 	switch (ent->opcode) {
@@ -577,7 +580,7 @@ static int arm_smmu_init_strtab_linear(struct arm_smmu_device *smmu)
 	u32 size;
 	struct arm_smmu_strtab_cfg *cfg = &smmu->strtab_cfg;
 
-	size = (1 << smmu->sid_bits) * (STRTAB_STE_DWORDS << 3);
+	size = (1 << smmu->sid_bits) * STRTAB_STE_SIZE;
 	strtab = page_alloc_aligned(&mem_pool, PAGES(size));
 	if (!strtab) {
 		printk("ERROR: SMMU failed to allocate l1 stream table (%u bytes)\n",
@@ -614,7 +617,7 @@ static int arm_smmu_init_l1_strtab(struct arm_smmu_device *smmu)
 		memset(&cfg->l1_desc[i], 0, sizeof(*cfg->l1_desc));
 		arm_smmu_write_strtab_l1_desc(strtab, &cfg->l1_desc[i]);
 		cfg->l1_desc[i].active_stes = 0;
-		strtab += STRTAB_L1_DESC_DWORDS << 3;
+		strtab += STRTAB_L1_DESC_SIZE;
 	}
 
 	return 0;
@@ -638,7 +641,7 @@ static int arm_smmu_init_strtab_2lvl(struct arm_smmu_device *smmu)
 		printk("WARN: SMMU 2-level strtab only covers %u/%u bits of SID\n",
 		       size, smmu->sid_bits);
 
-	l1size = cfg->num_l1_ents * (STRTAB_L1_DESC_DWORDS << 3);
+	l1size = cfg->num_l1_ents * STRTAB_L1_DESC_SIZE;
 	strtab = page_alloc_aligned(&mem_pool, PAGES(l1size));
 	if (!strtab) {
 		printk("ERROR: SMMU failed to allocate l1 stream table (%u bytes)\n",
