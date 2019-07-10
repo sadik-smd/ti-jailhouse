@@ -1062,6 +1062,7 @@ static int arm_smmuv3_cell_init(struct cell *cell)
 static void arm_smmuv3_cell_exit(struct cell *cell)
 {
 	struct jailhouse_iommu *iommu;
+	struct arm_smmu_cmdq_ent cmd;
 	int i, j, sid;
 
 	for (i = 0; i < JAILHOUSE_MAX_IOMMU_UNITS; i++) {
@@ -1074,6 +1075,10 @@ static void arm_smmuv3_cell_exit(struct cell *cell)
 		}
 	}
 
+	cmd.opcode	= CMDQ_OP_TLBI_S12_VMALL;
+	cmd.tlbi.vmid	= cell->config->id;
+	arm_smmu_cmdq_issue_cmd(smmu, &cmd);
+	arm_smmu_cmdq_issue_sync(smmu);
 }
 
 static int arm_smmuv3_init(void)
