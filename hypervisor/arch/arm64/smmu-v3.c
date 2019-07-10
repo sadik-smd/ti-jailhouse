@@ -419,6 +419,32 @@ static int arm_smmu_cmdq_build_cmd(__u64 *cmd, struct arm_smmu_cmdq_ent *ent)
 	return 0;
 }
 
+static void arm_smmu_cmdq_skip_err(struct arm_smmu_device *smmu)
+{
+	struct arm_smmu_queue *q;
+	u64 cmd[CMDQ_ENT_DWORDS];
+	u32 gerrorn;
+	struct arm_smmu_cmdq_ent cmd_sync = {
+		.opcode = CMDQ_OP_CMD_SYNC,
+	};
+
+	q = &smmu->cmdq.q;
+
+	printk("WARN: Command queue error 0x%x detected. Skipping command.\n",
+	       (u32)FIELD_GET(CMDQ_CONS_ERR, q->cons));
+	/*
+	 * Convert the faulty command to sync and clear the error so
+	 * command consumption can continue.
+	 */
+	arm_smmu_cmdq_build_cmd(cmd, &cmd_sync);
+	queue_write(queue_entry(q, q->cons), cmd, q->ent_dwords);
+
+	gerrorn = mmio_read32(smmu->base + ARM_SMMU_GERRORN);
+
+	gerrorn ^= GERROR_CMDQ_ERR;
+	mmio_write32(smmu->base + ARM_SMMU_GERRORN, gerrorn);
+}
+
 static void arm_smmu_cmdq_insert_cmd(struct arm_smmu_device *smmu, __u64 *cmd)
 {
 	struct arm_smmu_queue *q = &smmu->cmdq.q;
@@ -428,8 +454,12 @@ static void arm_smmu_cmdq_insert_cmd(struct arm_smmu_device *smmu, __u64 *cmd)
 
 	queue_write(queue_entry(q, q->prod), cmd, q->ent_dwords);
 	queue_inc_prod(q);
-	while (!queue_empty(q) && !queue_error(smmu, q)) {
+	while (!queue_empty(q)) {
 		queue_sync_cons(q);
+
+		if (queue_error(smmu, q)) {
+			arm_smmu_cmdq_skip_err(smmu);
+		}
 	}
 }
 
