@@ -210,6 +210,7 @@
 			(((reg) & (mask)) >> (__builtin_ffsl((mask)) - 1))
 
 #define CMDQ_OP_PREFETCH_CFG	0x1
+#define CMDQ_OP_PREFETCH_ADDR	0x2
 #define CMDQ_OP_CFGI_STE	0x3
 #define CMDQ_OP_CFGI_ALL	0x4
 #define CMDQ_OP_TLBI_NH_ASID	0x11
@@ -362,7 +363,6 @@ static __u64 *queue_entry(struct arm_smmu_queue *q, u32 reg)
 /* High-level queue accessors */
 static int arm_smmu_cmdq_build_cmd(__u64 *cmd, struct arm_smmu_cmdq_ent *ent)
 {
-	u64 vmid = (u64)this_cell()->config->id;
 	memset(cmd, 0, CMDQ_ENT_DWORDS << 3);
 	cmd[0] |= FIELD_PREP(CMDQ_0_OP, ent->opcode);
 
@@ -370,10 +370,12 @@ static int arm_smmu_cmdq_build_cmd(__u64 *cmd, struct arm_smmu_cmdq_ent *ent)
 	case CMDQ_OP_TLBI_EL2_ALL:
 	case CMDQ_OP_TLBI_NSNH_ALL:
 		break;
-	case CMDQ_OP_PREFETCH_CFG:
-		cmd[0] |= FIELD_PREP(CMDQ_PREFETCH_0_SID, ent->prefetch.sid);
+	case CMDQ_OP_PREFETCH_ADDR:
 		cmd[1] |= FIELD_PREP(CMDQ_PREFETCH_1_SIZE, ent->prefetch.size);
 		cmd[1] |= ent->prefetch.addr & CMDQ_PREFETCH_1_ADDR_MASK;
+		/* Fallthrough */
+	case CMDQ_OP_PREFETCH_CFG:
+		cmd[0] |= FIELD_PREP(CMDQ_PREFETCH_0_SID, ent->prefetch.sid);
 		break;
 	case CMDQ_OP_CFGI_STE:
 		cmd[0] |= FIELD_PREP(CMDQ_CFGI_0_SID, ent->cfgi.sid);
@@ -385,11 +387,12 @@ static int arm_smmu_cmdq_build_cmd(__u64 *cmd, struct arm_smmu_cmdq_ent *ent)
 		break;
 	case CMDQ_OP_TLBI_NH_VA:
 		cmd[0] |= FIELD_PREP(CMDQ_TLBI_0_ASID, ent->tlbi.asid);
+		cmd[0] |= FIELD_PREP(CMDQ_TLBI_0_VMID, ent->tlbi.vmid);
 		cmd[1] |= FIELD_PREP(CMDQ_TLBI_1_LEAF, ent->tlbi.leaf);
 		cmd[1] |= ent->tlbi.addr & CMDQ_TLBI_1_VA_MASK;
 		break;
 	case CMDQ_OP_TLBI_S2_IPA:
-		cmd[0] |= FIELD_PREP(CMDQ_TLBI_0_VMID, vmid);
+		cmd[0] |= FIELD_PREP(CMDQ_TLBI_0_VMID, ent->tlbi.vmid);
 		cmd[1] |= FIELD_PREP(CMDQ_TLBI_1_LEAF, ent->tlbi.leaf);
 		cmd[1] |= ent->tlbi.addr & CMDQ_TLBI_1_IPA_MASK;
 		break;
@@ -397,20 +400,17 @@ static int arm_smmu_cmdq_build_cmd(__u64 *cmd, struct arm_smmu_cmdq_ent *ent)
 		cmd[0] |= FIELD_PREP(CMDQ_TLBI_0_ASID, ent->tlbi.asid);
 		/* Fallthrough */
 	case CMDQ_OP_TLBI_S12_VMALL:
-		cmd[0] |= FIELD_PREP(CMDQ_TLBI_0_VMID, vmid);
+		cmd[0] |= FIELD_PREP(CMDQ_TLBI_0_VMID, ent->tlbi.vmid);
 		break;
 	case CMDQ_OP_CMD_SYNC:
-		cmd[0] |= FIELD_PREP(CMDQ_SYNC_0_CS, CMDQ_SYNC_0_CS_NONE);
-		cmd[0] |= FIELD_PREP(CMDQ_SYNC_0_MSH, ARM_SMMU_SH_NSH);
-		cmd[0] |= FIELD_PREP(CMDQ_SYNC_0_MSIATTR, 0x0);
-		/*
-		 * Commands are written little-endian, but we want the SMMU to
-		 * receive MSIData, and thus write it back to memory, in CPU
-		 * byte order, so big-endian needs an extra byteswap here.
-		 */
-		cmd[0] |= FIELD_PREP(CMDQ_SYNC_0_MSIDATA,
-				     0x0);
-		cmd[1] |= 0x0 & CMDQ_SYNC_1_MSIADDR_MASK;
+		if (ent->sync.msiaddr)
+			cmd[0] |= FIELD_PREP(CMDQ_SYNC_0_CS, CMDQ_SYNC_0_CS_IRQ);
+		else
+			cmd[0] |= FIELD_PREP(CMDQ_SYNC_0_CS, CMDQ_SYNC_0_CS_SEV);
+		cmd[0] |= FIELD_PREP(CMDQ_SYNC_0_MSH, ARM_SMMU_SH_ISH) |
+			  FIELD_PREP(CMDQ_SYNC_0_MSIATTR, ARM_SMMU_MEMATTR_OIWB) |
+			  FIELD_PREP(CMDQ_SYNC_0_MSIDATA, ent->sync.msidata);
+		cmd[1] |= ent->sync.msiaddr & CMDQ_SYNC_1_MSIADDR_MASK;
 		break;
 	default:
 		return -ENOENT;
