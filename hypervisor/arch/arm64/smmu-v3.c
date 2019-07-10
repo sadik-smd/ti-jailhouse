@@ -101,12 +101,16 @@
 #define ARM_SMMU_MEMATTR_DEVICE_nGnRE	0x1
 #define ARM_SMMU_MEMATTR_OIWB		0xf
 
-#define Q_IDX(q, p)			((p) & ((1 << (q)->max_n_shift) - 1))
-#define Q_WRP(q, p)			((p) & (1 << (q)->max_n_shift))
+#define Q_IDX(reg, shift)		((reg) & ((1 << (shift)) - 1))
+#define Q_WRP(reg, shift)		((reg) & (1 << (shift)))
 #define Q_OVERFLOW_FLAG			(1 << 31)
-#define Q_OVF(q, p)			((p) & Q_OVERFLOW_FLAG)
-#define Q_ENT(q, p)			((q)->base +			\
-					 Q_IDX(q, p) * (q)->ent_dwords)
+#define Q_OVF(reg)			((reg) & Q_OVERFLOW_FLAG)
+#define Q_EMPTY(prod, cons, shift)	\
+			(Q_IDX((prod), (shift)) == Q_IDX((cons), (shift)) && \
+			 Q_WRP((prod), (shift)) == Q_WRP((cons), (shift)))
+#define Q_FULL(prod, cons, shift)	\
+			(Q_IDX((prod), (shift)) == Q_IDX((cons), (shift)) && \
+			 Q_WRP((prod), (shift)) != Q_WRP((cons), (shift)))
 
 #define Q_BASE_RWA			(1UL << 62)
 #define Q_BASE_ADDR_MASK		BIT_MASK(51, 5)
@@ -299,14 +303,16 @@ struct arm_smmu_device {
 /* Low-level queue manipulation functions */
 static bool queue_full(struct arm_smmu_queue *q)
 {
-	return Q_IDX(q, q->prod) == Q_IDX(q, q->cons) &&
-	       Q_WRP(q, q->prod) != Q_WRP(q, q->cons);
+	u32 shift = q->max_n_shift;
+
+	return Q_FULL(q->prod, q->cons, shift);
 }
 
 static bool queue_empty(struct arm_smmu_queue *q)
 {
-	return Q_IDX(q, q->prod) == Q_IDX(q, q->cons) &&
-	       Q_WRP(q, q->prod) == Q_WRP(q, q->cons);
+	u32 shift = q->max_n_shift;
+
+	return Q_EMPTY(q->prod, q->cons, shift);
 }
 
 static void queue_sync_cons(struct arm_smmu_queue *q)
@@ -321,9 +327,10 @@ static bool queue_error(struct arm_smmu_queue *q)
 
 static void queue_inc_prod(struct arm_smmu_queue *q)
 {
-	u32 prod = (Q_WRP(q, q->prod) | Q_IDX(q, q->prod)) + 1;
+	u32 shift = q->max_n_shift;
+	u32 prod = (Q_WRP(q->prod, shift) | Q_IDX(q->prod, shift)) + 1;
 
-	q->prod = Q_OVF(q, q->prod) | Q_WRP(q, prod) | Q_IDX(q, prod);
+	q->prod = Q_OVF(q->prod) | Q_WRP(prod, shift) | Q_IDX(prod, shift);
 	mmio_write32(q->prod_reg, q->prod);
 }
 
@@ -336,12 +343,17 @@ static void queue_write(__u64 *dst, __u64 *src, u32 n_dwords)
 	dsb(ish);
 }
 
+static __u64 *queue_entry(struct arm_smmu_queue *q, u32 reg)
+{
+	return q->base + (Q_IDX(reg, q->max_n_shift) * q->ent_dwords);
+}
+
 static int queue_insert_raw(struct arm_smmu_queue *q, __u64 *ent)
 {
 	while (queue_full(q))
 	{}
 
-	queue_write(Q_ENT(q, q->prod), ent, q->ent_dwords);
+	queue_write(queue_entry(q, q->prod), ent, q->ent_dwords);
 	queue_inc_prod(q);
 	while (!queue_empty(q) && !queue_error(q)) {
 		queue_sync_cons(q);
