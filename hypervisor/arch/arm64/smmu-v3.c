@@ -920,6 +920,7 @@ static int arm_smmu_init_l2_strtab(struct arm_smmu_device *smmu, u32 sid)
 {
 	struct arm_smmu_strtab_cfg *cfg = &smmu->strtab_cfg;
 	struct arm_smmu_strtab_l1_desc *desc;
+	struct arm_smmu_cmdq_ent cmd;
 	void *strtab;
 	u32 size;
 
@@ -944,6 +945,12 @@ static int arm_smmu_init_l2_strtab(struct arm_smmu_device *smmu, u32 sid)
 	arm_smmu_init_bypass_stes(desc->l2ptr, 1 << STRTAB_SPLIT);
 	arm_smmu_write_strtab_l1_desc(strtab, desc);
 
+	/* Invalidate cached L1 descriptors. */
+	cmd.opcode = CMDQ_OP_CFGI_STE;
+	cmd.cfgi.sid = sid;
+	cmd.cfgi.leaf = false;
+	arm_smmu_cmdq_issue_cmd(smmu, &cmd);
+
 	return 0;
 }
 
@@ -951,6 +958,7 @@ static void arm_smmu_uninit_l2_strtab(struct arm_smmu_device *smmu, u32 sid)
 {
 	struct arm_smmu_strtab_cfg *cfg = &smmu->strtab_cfg;
 	struct arm_smmu_strtab_l1_desc *desc;
+	struct arm_smmu_cmdq_ent cmd;
 	void *strtab;
 	u32 size;
 
@@ -965,6 +973,12 @@ static void arm_smmu_uninit_l2_strtab(struct arm_smmu_device *smmu, u32 sid)
 	desc->span = 0;
 	strtab = &cfg->strtab[(sid >> STRTAB_SPLIT) * STRTAB_L1_DESC_DWORDS];
 	arm_smmu_write_strtab_l1_desc(strtab, desc);
+
+	/* Invalidate cached L1 descriptors. */
+	cmd.opcode = CMDQ_OP_CFGI_STE;
+	cmd.cfgi.sid = sid;
+	cmd.cfgi.leaf = false;
+	arm_smmu_cmdq_issue_cmd(smmu, &cmd);
 
 	size = 1 << (STRTAB_SPLIT + STRTAB_STE_DWORDS_BITS + 3);
 	page_free(&mem_pool, desc->l2ptr, PAGES(size));
