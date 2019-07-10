@@ -449,8 +449,9 @@ static void arm_smmu_cmdq_insert_cmd(struct arm_smmu_device *smmu, __u64 *cmd)
 {
 	struct arm_smmu_queue *q = &smmu->cmdq.q;
 
-	while (queue_full(q))
-	{}
+	while (queue_full(q)) {
+		queue_sync_cons(q);
+	}
 
 	queue_write(queue_entry(q, q->prod), cmd, q->ent_dwords);
 	queue_inc_prod(q);
