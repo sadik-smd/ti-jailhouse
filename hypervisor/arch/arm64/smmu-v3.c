@@ -530,21 +530,20 @@ static void arm_smmu_write_strtab_ent(struct arm_smmu_device *smmu, u32 sid,
 				      __u64 *dst, bool bypass, u32 vmid)
 {
 	struct paging_structures *pg_structs = &this_cell()->arch.mm;
-	u64 val = dst[0], vttbr;
+	u64 val, vttbr;
+
+	val = 0;
 
 	/* Bypass */
 	if (bypass) {
-		dst[0] = 0;
-		dsb(ishst);
-		val = FIELD_PREP(STRTAB_STE_0_CFG, STRTAB_STE_0_CFG_BYPASS);
-		dst[0] = val;
+		val = STRTAB_STE_0_V;
+		val |= FIELD_PREP(STRTAB_STE_0_CFG, STRTAB_STE_0_CFG_BYPASS);
 		dst[1] = FIELD_PREP(STRTAB_STE_1_SHCFG,
 				    STRTAB_STE_1_SHCFG_INCOMING);
-		dst[2] = vmid;
+		dst[2] = FIELD_PREP(STRTAB_STE_2_S2VMID, vmid);
+		dst[0] = val;
 		dsb(ishst);
 		if (smmu) {
-			dst[0] = val | STRTAB_STE_0_V;
-			dsb(ishst);
 			arm_smmu_sync_ste_for_sid(smmu, sid);
 		}
 		return;
@@ -563,10 +562,12 @@ static void arm_smmu_write_strtab_ent(struct arm_smmu_device *smmu, u32 sid,
 	vttbr = paging_hvirt2phys(pg_structs->root_table);
 	dst[3] = vttbr & STRTAB_STE_3_S2TTB_MASK;
 
-	dst[0] = FIELD_PREP(STRTAB_STE_0_CFG, STRTAB_STE_0_CFG_S2_TRANS);
-	dsb(ishst);
-	dst[0] |= STRTAB_STE_0_V;
+	val |= FIELD_PREP(STRTAB_STE_0_CFG, STRTAB_STE_0_CFG_S2_TRANS);
+	val |= STRTAB_STE_0_V;
 
+	arm_smmu_sync_ste_for_sid(smmu, sid);
+	dst[0] = val;
+	dsb(ishst);
 	arm_smmu_sync_ste_for_sid(smmu, sid);
 }
 
