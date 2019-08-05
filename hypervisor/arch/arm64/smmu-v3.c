@@ -1918,13 +1918,16 @@ static int arm_smmuv3_cell_init(struct cell *cell)
 	struct arm_smmu_cmdq_ent cmd;
 	int ret, i, j, sid;
 
+	if (!iommu_count_units())
+		return 0;
+
 #ifdef CONFIG_SMMUV3_STAGE1
 	struct arm_smmu_state *state;
 	cell->arch.smmu_states = NULL;
 #endif
 
-	for (i = 0; i < JAILHOUSE_MAX_IOMMU_UNITS; i++) {
-		iommu = &system_config->platform_info.arm.iommu_units[i];
+	iommu = &system_config->platform_info.arm.iommu_units[0];
+	for (i = 0; i < iommu_count_units(); iommu++, i++) {
 		if (iommu->type != JAILHOUSE_IOMMU_SMMUV3)
 			continue;
 
@@ -1976,8 +1979,11 @@ static void arm_smmuv3_cell_exit(struct cell *cell)
 	struct arm_smmu_cmdq_ent cmd;
 	int i, j, sid;
 
-	for (i = 0; i < JAILHOUSE_MAX_IOMMU_UNITS; i++) {
-		iommu = &system_config->platform_info.arm.iommu_units[i];
+	if (!iommu_count_units())
+		return;
+
+	iommu = &system_config->platform_info.arm.iommu_units[0];
+	for (i = 0; i < iommu_count_units(); iommu++, i++) {
 		if (iommu->type != JAILHOUSE_IOMMU_SMMUV3)
 			continue;
 
@@ -2003,8 +2009,8 @@ static int arm_smmuv3_init(void)
 	struct jailhouse_iommu *iommu;
 	int ret, i;
 
-	for (i = 0; i < JAILHOUSE_MAX_IOMMU_UNITS; i++) {
-		iommu = &system_config->platform_info.arm.iommu_units[i];
+	iommu = &system_config->platform_info.arm.iommu_units[0];
+	for (i = 0; i < iommu_count_units(); iommu++, i++) {
 		if (iommu->type != JAILHOUSE_IOMMU_SMMUV3)
 			continue;
 
