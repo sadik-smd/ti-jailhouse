@@ -14,6 +14,19 @@
 #include <jailhouse/config.h>
 #include <asm/iommu.h>
 
+unsigned int iommu_count_units(void)
+{
+	unsigned int units = 0;
+
+	if (!system_config->platform_info.arm.iommu_units[units].type)
+		return 0;
+
+	while (units < JAILHOUSE_MAX_IOMMU_UNITS &&
+	       system_config->platform_info.arm.iommu_units[units].type)
+		units++;
+	return units;
+}
+
 int iommu_map_memory_region(struct cell *cell,
 			    const struct jailhouse_memory *mem)
 {

@@ -33,6 +33,7 @@ int pvu_iommu_config_commit(struct cell *cell);
 int arm_smmuv3_iommu_config_commit(struct cell *cell);
 #endif
 
+unsigned int iommu_count_units(void);
 int iommu_map_memory_region(struct cell *cell,
 			    const struct jailhouse_memory *mem);
 int iommu_unmap_memory_region(struct cell *cell,
