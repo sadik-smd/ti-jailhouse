@@ -23,8 +23,8 @@
 struct {
 	struct jailhouse_cell_desc cell;
 	__u64 cpus[1];
-	struct jailhouse_memory mem_regions[20];
-	struct jailhouse_irqchip irqchips[3];
+	struct jailhouse_memory mem_regions[22];
+	struct jailhouse_irqchip irqchips[4];
 	struct jailhouse_pci_device pci_devices[1];
 	__u32 stream_ids[2];
 	struct jailhouse_regmap regmaps[1];
@@ -130,6 +130,20 @@ struct {
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO,
 		},
+		/* main_gpio2 */ {
+			.phys_start = 0x00610000,
+			.virt_start = 0x00610000,
+			.size = 0x1000,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+				JAILHOUSE_MEM_IO,
+		},
+		/* main_gpio3 */ {
+			.phys_start = 0x00611000,
+			.virt_start = 0x00611000,
+			.size = 0x1000,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+				JAILHOUSE_MEM_IO,
+		},
 		/* dss.common_s1 */ {
 			.phys_start = 0x4B00000,
 			.virt_start = 0x4B00000,
@@ -221,6 +235,14 @@ struct {
 			/* d5520, vpci, main_uart1 */
 			.pin_bitmap = {
 				0x0, 0x100008, 0x2, 0,
+			},
+		},
+		{
+			.address = 0x01800000,
+			.pin_base = 416,
+			/* GPIO INTR */
+			.pin_bitmap = {
+				0xffffff00, 0x0, 0x2, 0,
 			},
 		},
 		{
