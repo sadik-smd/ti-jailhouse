@@ -19,7 +19,7 @@
 struct {
 	struct jailhouse_system header;
 	__u64 cpus[1];
-	struct jailhouse_memory mem_regions[30];
+	struct jailhouse_memory mem_regions[31];
 	struct jailhouse_irqchip irqchips[6];
 	struct jailhouse_pci_device pci_devices[1];
 	__u32 stream_ids[17];
@@ -305,10 +305,17 @@ struct {
 		/* RAM - second bank */ {
 			.phys_start = 0x880000000,
 			.virt_start = 0x880000000,
-			.size = 0x20000000,
+			.size = 0x1fa00000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_EXECUTE | JAILHOUSE_MEM_DMA |
 				JAILHOUSE_MEM_LOADABLE,
+		},
+		/* RAM - reserved for ivshmem and baremetal apps */ {
+			.phys_start = 0x89fe00000,
+			.virt_start = 0x89fe00000,
+			.size = 0x200000,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+				JAILHOUSE_MEM_EXECUTE | JAILHOUSE_MEM_LOADABLE,
 		},
 		/* RAM - reserved for inmate */ {
 			.phys_start = 0x8a0000000,
