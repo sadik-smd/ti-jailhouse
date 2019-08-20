@@ -188,8 +188,10 @@ static int pvu_iommu_cell_init(struct cell *cell)
 		if (virtid > MAX_VIRTID)
 			continue;
 
-		if (pvu_tlb_is_enabled(dev, virtid))
-			return -EINVAL;
+		if (pvu_tlb_is_enabled(dev, virtid)) {
+			printk("PVU: WARN: virtid %d already enabled\n", virtid);
+			/* TODO: VirtID modulation */
+		}
 	}
 	return 0;
 }

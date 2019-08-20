@@ -163,13 +163,16 @@ void pvu_tlb_flush(struct pvu_dev *dev, u16 tlbnum)
 	}
 
 	mmio_write32(&tlb->chain, 0x0);
-	pvu_tlb_disable(dev, tlbnum);
+	/*
+	 * Disabling will set to bypass for this virtID
+	 * Keep the TLB enabled to force faults
+	 */
+	pvu_tlb_enable(dev, tlbnum);
 
 	if (i < dev->max_virtid)
 		dev->tlb_data[tlbnum] = 0x0 | i << dev->num_entries;
 	else
 		dev->tlb_data[tlbnum] = 0x0;
-
 }
 
 void pvu_entry_enable(struct pvu_dev *dev, u16 tlbnum, u8 index)
