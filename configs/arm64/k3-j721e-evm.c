@@ -373,9 +373,9 @@ struct {
 	},
 
 	.pci_devices = {
-		/* 0001:00:00.0 */ {
+		/* 0003:00:00.0 */ {
 			.type = JAILHOUSE_PCI_TYPE_IVSHMEM,
-			.domain = 1,
+			.domain = 3,
 			.bdf = 0x00,
 			.bar_mask = {
 				0xffffff00, 0xffffffff, 0x00000000,
