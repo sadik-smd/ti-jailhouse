@@ -161,7 +161,7 @@ struct {
 		/* PCIe Core */ {
 			.phys_start = 0x0d000000,
 			.virt_start = 0x0d000000,
-			.size = 0x01000000,
+			.size = 0x01800000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO,
 		},
