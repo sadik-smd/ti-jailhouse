@@ -23,7 +23,7 @@
 struct {
 	struct jailhouse_cell_desc cell;
 	__u64 cpus[1];
-	struct jailhouse_memory mem_regions[23];
+	struct jailhouse_memory mem_regions[24];
 	struct jailhouse_irqchip irqchips[4];
 	struct jailhouse_pci_device pci_devices[1];
 	__u32 stream_ids[2];
@@ -71,6 +71,14 @@ struct {
 			.phys_start = 0x00100000,
 			.virt_start = 0x00100000,
 			.size = 0x00020000,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+				JAILHOUSE_MEM_IO | JAILHOUSE_MEM_ROOTSHARED,
+		},
+		/* i2c4 */
+		{
+			.phys_start = 0x02040000,
+			.virt_start = 0x02040000,
+			.size = 0x1000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO | JAILHOUSE_MEM_ROOTSHARED,
 		},
@@ -239,9 +247,9 @@ struct {
 		{
 			.address = 0x01800000,
 			.pin_base = 160,
-			/* d5520, vpci, main_uart1 */
+			/* d5520, vpci, main_uart1, i2c4 */
 			.pin_bitmap = {
-				0x0, 0x100008, 0x2, 0,
+				0x0, 0x100008, 0x1002, 0,
 			},
 		},
 		{
