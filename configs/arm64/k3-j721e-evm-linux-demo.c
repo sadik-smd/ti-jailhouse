@@ -23,7 +23,7 @@
 struct {
 	struct jailhouse_cell_desc cell;
 	__u64 cpus[1];
-	struct jailhouse_memory mem_regions[22];
+	struct jailhouse_memory mem_regions[23];
 	struct jailhouse_irqchip irqchips[4];
 	struct jailhouse_pci_device pci_devices[1];
 	__u32 stream_ids[2];
@@ -123,10 +123,17 @@ struct {
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO,
 		},
-		/* GPU */ {
-			.phys_start = 0x4e20000000,
-			.virt_start = 0x4e20000000,
-			.size = 0x80000,
+		/* GPU Guest Firmware */ {
+			.phys_start = 0xc1000000,
+			.virt_start = 0xc1000000,
+			.size = 0x1000000,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+				JAILHOUSE_MEM_IO | JAILHOUSE_MEM_ROOTSHARED,
+		},
+		/* GPU Guest*/ {
+			.phys_start = 0x4e20010000,
+			.virt_start = 0x4e20010000,
+			.size = 0x10000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO,
 		},
@@ -224,9 +231,9 @@ struct {
 		{
 			.address = 0x01800000,
 			.pin_base = 32,
-			/* gpu, sdhci0, sproxy_rx_016 */
+			/* sdhci0, sproxy_rx_016 */
 			.pin_bitmap = {
-				0x1000008, 0x80, 0x0, 0,
+				0x8, 0x80, 0x0, 0,
 			},
 		},
 		{
