@@ -19,7 +19,7 @@
 struct {
 	struct jailhouse_system header;
 	__u64 cpus[1];
-	struct jailhouse_memory mem_regions[36];
+	struct jailhouse_memory mem_regions[38];
 	struct jailhouse_irqchip irqchips[6];
 	struct jailhouse_pci_device pci_devices[1];
 	__u32 stream_ids[30];
@@ -129,16 +129,30 @@ struct {
 				JAILHOUSE_MEM_IO,
 		},
 		/* usbss0 */ {
+			.phys_start = 0x04104000,
+			.virt_start = 0x04104000,
+			.size = 0x00001000,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+				JAILHOUSE_MEM_IO,
+		},
+		/* usbss0 */ {
 			.phys_start = 0x06000000,
 			.virt_start = 0x06000000,
-			.size = 0x00400000,
+			.size = 0x00030000,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+				JAILHOUSE_MEM_IO,
+		},
+		/* usbss1 */ {
+			.phys_start = 0x04114000,
+			.virt_start = 0x04114000,
+			.size = 0x00001000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO,
 		},
 		/* usbss1 */ {
 			.phys_start = 0x06400000,
 			.virt_start = 0x06400000,
-			.size = 0x00400000,
+			.size = 0x00030000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO,
 		},
