@@ -44,7 +44,7 @@ struct {
 			.pci_mmconfig_base = 0x76000000,
 			.pci_mmconfig_end_bus = 0,
 			.pci_is_virtual = 1,
-			.pci_domain = 3,
+			.pci_domain = -1,
 			.arm = {
 				.gic_version = 3,
 				.gicd_base = 0x01800000,
@@ -173,7 +173,7 @@ struct {
 		/* PCIe Core */ {
 			.phys_start = 0x0d000000,
 			.virt_start = 0x0d000000,
-			.size = 0x01000000,
+			.size = 0x02000000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO,
 		},
@@ -398,7 +398,6 @@ struct {
 	.pci_devices = {
 		/* 0003:00:01.0 */ {
 			.type = JAILHOUSE_PCI_TYPE_IVSHMEM,
-			.domain = 3,
 			.bdf = 1 << 3,
 			.bar_mask = JAILHOUSE_IVSHMEM_BAR_MASK_INTX,
 			.shmem_regions_start = 0,
