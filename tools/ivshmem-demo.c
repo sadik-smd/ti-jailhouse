@@ -91,10 +91,11 @@ int main(int argc, char *argv[])
 
 	pgsize = getpagesize();
 
-	if (argc < 2)
-		path = strdup("/dev/uio0");
-	else
-		path = strdup(argv[1]);
+	if (argc !=  3)
+		error(1, EINVAL, "Usage: ivshmem-demo </dev/uioX> <peer_id>");
+	path = strdup(argv[1]);
+	target = atoi(argv[2]);
+
 	fds[0].fd = open(path, O_RDWR);
 	if (fds[0].fd < 0)
 		error(1, errno, "open(%s)", path);
@@ -113,6 +114,8 @@ int main(int argc, char *argv[])
 
 	id = mmio_read32(&regs->id);
 	printf("ID = %d\n", id);
+	if (target >= regs->max_peers || target == id)
+		error(1, EINVAL, "invalid peer number");
 
 	offset += pgsize;
 	size = uio_read_mem_size(path, 1);
@@ -180,7 +183,6 @@ int main(int argc, char *argv[])
 				error(1, errno, "read(sigfd)");
 
 			int_no = has_msix ? (id + 1) : 0;
-			target = (id + 1) % 3;
 			printf("\nSending interrupt %d to peer %d\n",
 			       int_no, target);
 			mmio_write32(&regs->doorbell, int_no | (target << 16));
