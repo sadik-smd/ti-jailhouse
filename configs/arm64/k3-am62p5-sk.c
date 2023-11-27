@@ -1,11 +1,12 @@
 /*
  * Jailhouse, a Linux-based partitioning hypervisor
  *
- * Copyright (c) 2022 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (c) 2023 Texas Instruments Incorporated - http://www.ti.com/
  *
- * Configuration for K3 based AM625 EVM
+ * Configuration for K3 based AM62P5 EVM
  *
  * Authors:
+ *  Paresh Bhagat <p-bhagat@ti.com>
  *  Matt Ranostay <mranostay@ti.com>
  *
  * This work is licensed under the terms of the GNU GPL, version 2.  See
@@ -18,7 +19,7 @@
 struct {
 	struct jailhouse_system header;
 	__u64 cpus[1];
-	struct jailhouse_memory mem_regions[35];
+	struct jailhouse_memory mem_regions[31];
 	struct jailhouse_irqchip irqchips[5];
 	struct jailhouse_pci_device pci_devices[2];
 } __attribute__((packed)) config = {
@@ -28,7 +29,7 @@ struct {
 		.architecture = JAILHOUSE_ARM64,
 		.flags = JAILHOUSE_SYS_VIRTUAL_DEBUG_CONSOLE,
 		.hypervisor_memory = {
-			.phys_start = 0xdfc00000,
+			.phys_start = 0x9dfc00000,
 			.size = 0x400000,
 		},
 		.debug_console = {
@@ -51,7 +52,7 @@ struct {
 			},
 		},
 		.root_cell = {
-			.name = "k3-am625-sk",
+			.name = "k3-am62p5-sk",
 
 			.cpu_set_size = sizeof(config.cpus),
 			.num_memory_regions = ARRAY_SIZE(config.mem_regions),
@@ -68,37 +69,37 @@ struct {
 	.mem_regions = {
 		/* IVSHMEM shared memory regions for 00:00.0 (demo) */
 		{
-			.phys_start = 0xdfa00000,
-			.virt_start = 0xdfa00000,
+			.phys_start = 0x9dfa00000,
+			.virt_start = 0x9dfa00000,
 			.size = 0x10000,
 			.flags = JAILHOUSE_MEM_READ,
 		},
 		{
-			.phys_start = 0xdfa10000,
-			.virt_start = 0xdfa10000,
+			.phys_start = 0x9dfa10000,
+			.virt_start = 0x9dfa10000,
 			.size = 0x10000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE,
 		},
 		/* Peer 0 */ {
-			.phys_start = 0xdfa20000,
-			.virt_start = 0xdfa20000,
+			.phys_start = 0x9dfa20000,
+			.virt_start = 0x9dfa20000,
 			.size = 0x10000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE,
 		},
 		/* Peer 1 */ {
-			.phys_start = 0xdfa30000,
-			.virt_start = 0xdfa30000,
+			.phys_start = 0x9dfa30000,
+			.virt_start = 0x9dfa30000,
 			.size = 0x10000,
 			.flags = JAILHOUSE_MEM_READ,
 		},
 		/* Peer 2 */ {
-			.phys_start = 0xdfa40000,
-			.virt_start = 0xdfa40000,
+			.phys_start = 0x9dfa40000,
+			.virt_start = 0x9dfa40000,
 			.size = 0x10000,
 			.flags = JAILHOUSE_MEM_READ,
 		},
 		/* IVSHMEM shared memory region for 00:01.0 */
-		JAILHOUSE_SHMEM_NET_REGIONS(0xdfb00000, 0),
+		JAILHOUSE_SHMEM_NET_REGIONS(0x9dfb00000, 0),
 		{
 			.phys_start = 0x01810000,
 			.virt_start = 0x01810000,
@@ -116,13 +117,20 @@ struct {
 		/* RAM */ {
 			.phys_start = 0x80000000,
 			.virt_start = 0x80000000,
-			.size = 0x5fa00000,
+			.size = 0x80000000,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+				JAILHOUSE_MEM_EXECUTE,
+		},
+		/* RAM */ {
+			.phys_start = 0x880000000,
+			.virt_start = 0x880000000,
+			.size = 0x15fa00000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_EXECUTE,
 		},
 		/* RAM. Reserved for inmates */ {
-			.phys_start = 0xe0000000,
-			.virt_start = 0xe0000000,
+			.phys_start = 0x9e0000000,
+			.virt_start = 0x9e0000000,
 			.size = 0x20000000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_EXECUTE,
@@ -141,24 +149,17 @@ struct {
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO,
 		},
+		/* temp */ {
+			.phys_start = 0x00b00000,
+			.virt_start = 0x00b00000,
+			.size = 0x00020000,
+			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
+	            JAILHOUSE_MEM_IO,
+		},
 		/* GPU */ {
 			.phys_start = 0x0fd00000,
 			.virt_start = 0x0fd00000,
 			.size = 0x00020000,
-			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
-				JAILHOUSE_MEM_IO,
-		},
-		/* TimeSync Router */ {
-			.phys_start = 0x00a40000,
-			.virt_start = 0x00a40000,
-			.size = 0x00001000,
-			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
-				JAILHOUSE_MEM_IO,
-		},
-		/* Wake Up Domain VTM0 */ {
-			.phys_start = 0x00b00000,
-			.virt_start = 0x00b00000,
-			.size = 0x00001000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO,
 		},
@@ -211,13 +212,6 @@ struct {
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO,
 		},
-		/* PRUSS-M */ {
-			.phys_start = 0x30040000,
-			.virt_start = 0x30040000,
-			.size = 0x00080000,
-			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
-				JAILHOUSE_MEM_IO,
-		},
 		/* USB */ {
 			.phys_start = 0x31000000,
 			.virt_start = 0x31000000,
@@ -232,31 +226,10 @@ struct {
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO,
 		},
-		/* GPMC */ {
-			.phys_start = 0x3b000000,
-			.virt_start = 0x3b000000,
-			.size = 0x00001000,
-			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
-				JAILHOUSE_MEM_IO,
-		},
-		/* GPMC */ {
-			.phys_start = 0x50000000,
-			.virt_start = 0x50000000,
-			.size = 0x08000000,
-			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
-				JAILHOUSE_MEM_IO,
-		},
 		/* CPSW */ {
 			.phys_start = 0x08000000,
 			.virt_start = 0x08000000,
 			.size = 0x00200000,
-			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
-				JAILHOUSE_MEM_IO,
-		},
-		/* CRYPTO */ {
-			.phys_start = 0x40900000,
-			.virt_start = 0x40900000,
-			.size = 0x0030000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO,
 		},

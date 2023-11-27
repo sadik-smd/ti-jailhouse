@@ -1,12 +1,13 @@
 /*
  * Jailhouse, a Linux-based partitioning hypervisor
  *
- * Configuration for Linux inmate on AM625 based platforms
+ * Configuration for Linux inmate on AM62P5 based platforms
  * 3 CPUs, 512MB RAM, 1 serial port (MAIN UART1)
  *
- * Copyright (c) 2022 Texas Instruments Incorporated - http://www.ti.com/
+ * Copyright (c) 2023 Texas Instruments Incorporated - http://www.ti.com/
  *
  * Authors:
+ *  Paresh Bhagat <p-bhagat@ti.com>
  *  Matt Ranostay <mranostay@ti.com>
  *
  * This work is licensed under the terms of the GNU GPL, version 2.  See
@@ -31,7 +32,7 @@ struct {
 		.signature = JAILHOUSE_CELL_DESC_SIGNATURE,
 		.revision = JAILHOUSE_CONFIG_REVISION,
 		.architecture = JAILHOUSE_ARM64,
-		.name = "k3-am625-sk-linux-demo",
+		.name = "k3-am62p5-sk-linux-demo",
 		.flags = JAILHOUSE_CELL_PASSIVE_COMMREG,
 
 		.cpu_set_size = sizeof(config.cpus),
@@ -57,41 +58,41 @@ struct {
 	.mem_regions = {
 		/* IVSHMEM shared memory regions for 00:00.0 (demo) */
 		{
-			.phys_start = 0xdfa00000,
-			.virt_start = 0xdfa00000,
+			.phys_start = 0x9dfa00000,
+			.virt_start = 0x9dfa00000,
 			.size = 0x10000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_ROOTSHARED,
 		},
 		{
-			.phys_start = 0xdfa10000,
-			.virt_start = 0xdfa10000,
+			.phys_start = 0x9dfa10000,
+			.virt_start = 0x9dfa10000,
 			.size = 0x10000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_ROOTSHARED,
 		},
 		/* Peer 0 */ {
-			.phys_start = 0xdfa20000,
-			.virt_start = 0xdfa20000,
+			.phys_start = 0x9dfa20000,
+			.virt_start = 0x9dfa20000,
 			.size = 0x10000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_ROOTSHARED,
 		},
 		/* Peer 1 */ {
-			.phys_start = 0xdfa30000,
-			.virt_start = 0xdfa30000,
+			.phys_start = 0x9dfa30000,
+			.virt_start = 0x9dfa30000,
 			.size = 0x10000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_ROOTSHARED,
 		},
 		/* Peer 2 */ {
-			.phys_start = 0xdfa40000,
-			.virt_start = 0xdfa40000,
+			.phys_start = 0x9dfa40000,
+			.virt_start = 0x9dfa40000,
 			.size = 0x10000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_ROOTSHARED,
 		},
 		/* IVSHMEM shared memory region for 00:01.0 */
-		JAILHOUSE_SHMEM_NET_REGIONS(0xdfb00000, 1),
+		JAILHOUSE_SHMEM_NET_REGIONS(0x9dfb00000, 1),
 		/* RAM load */ {
-			.phys_start = 0xffff0000,
+			.phys_start = 0x9ffff0000,
 			.virt_start = 0x0,
 			.size = 0x10000,	/* 64KB */
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
@@ -99,8 +100,8 @@ struct {
 				JAILHOUSE_MEM_LOADABLE,
 		},
 		/* RAM load */ {
-			.phys_start = 0xe0000000,
-			.virt_start = 0xe0000000,
+			.phys_start = 0x9e0000000,
+			.virt_start = 0x9e0000000,
 			.size = 0x1fff0000,	/* (512MB - 64KB) */
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_EXECUTE | JAILHOUSE_MEM_DMA |
@@ -113,7 +114,7 @@ struct {
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO,
 		},
-#ifdef CONFIG_ENABLE_AM625_INMATE_CELL_EMMC
+#ifdef CONFIG_ENABLE_AM62P5_INMATE_CELL_EMMC
 		/* sdhci0 */ {
 			.phys_start = 0x0fa10000,
 			.virt_start = 0x0fa10000,
@@ -177,7 +178,7 @@ struct {
 			.address = 0x01800000,
 			.pin_base = 160,
 			.pin_bitmap = {
-#ifdef CONFIG_ENABLE_AM625_INMATE_CELL_EMMC
+#ifdef CONFIG_ENABLE_AM62P5_INMATE_CELL_EMMC
 			/* sdhc */
 			1 << (165 - 160) |
 #endif
