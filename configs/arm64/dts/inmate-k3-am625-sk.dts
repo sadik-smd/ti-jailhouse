@@ -1,6 +1,7 @@
 /dts-v1/;
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/soc/ti,sci_pm_domain.h>
 
 / {
 	model = "Texas Instruments AM625 Inmate Model";
@@ -10,11 +11,11 @@
 	#size-cells = <2>;
 
 	aliases {
-		serial1 = &main_uart1;
+		serial3 = &main_uart1;
 	};
 
 	chosen {
-		stdout-path = "serial1:115200n8";
+		stdout-path = "serial3:115200n8";
 	};
 
 	memory@e0000000 {
@@ -91,9 +92,9 @@
 			compatible = "ti,am64-uart", "ti,am654-uart";
 			reg = <0x00 0x02810000 0x00 0x100>;
 			interrupts = <GIC_SPI 179 IRQ_TYPE_LEVEL_HIGH>;
-			power-domains = <&k3_pds 152 1>;
-			current-speed = <115200>;
-			clock-frequency = <48000000>;
+			power-domains = <&k3_pds 152 TI_SCI_PD_EXCLUSIVE>;
+			clocks = <&k3_clks 152 0>;
+			clock-names = "fclk";
 		};
 
 		pci@76000000 {
