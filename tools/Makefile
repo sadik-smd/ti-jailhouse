@@ -34,8 +34,8 @@ KBUILD_LDFLAGS :=
 KBUILD_CFLAGS += $(call cc-option, -fno-pie)
 KBUILD_CFLAGS += $(call cc-option, -no-pie)
 
-BINARIES := jailhouse demos/ivshmem-demo
-targets += jailhouse.o demos/ivshmem-demo.o
+BINARIES := jailhouse demos/ivshmem-demo demos/crash-test
+targets += jailhouse.o demos/ivshmem-demo.o demos/crash-test.o
 
 ifeq ($(ARCH),x86)
 BINARIES += demos/cache-timings
