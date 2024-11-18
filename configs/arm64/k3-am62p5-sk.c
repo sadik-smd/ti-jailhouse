@@ -157,9 +157,9 @@ struct {
 	            JAILHOUSE_MEM_IO,
 		},
 		/* GPU */ {
-			.phys_start = 0x0fd00000,
-			.virt_start = 0x0fd00000,
-			.size = 0x00020000,
+			.phys_start = 0x0fd80000,
+			.virt_start = 0x0fd80000,
+			.size = 0x00080000,
 			.flags = JAILHOUSE_MEM_READ | JAILHOUSE_MEM_WRITE |
 				JAILHOUSE_MEM_IO,
 		},
