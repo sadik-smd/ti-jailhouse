@@ -50,6 +50,8 @@
 #define UART_LSR		0x5
 #define  UART_LSR_THRE		0x20
 #define  UART_MDR1		0x8
+#define  UART_MCR       0X4
+#define  UART_FCR       0x2
 
 static void reg_out_mmio32(struct uart_chip *chip, unsigned int reg, u32 value)
 {
@@ -64,6 +66,8 @@ static u32 reg_in_mmio32(struct uart_chip *chip, unsigned int reg)
 static void uart_8250_init(struct uart_chip *chip)
 {
 	if (chip->divider) {
+        if (CON_HAS_MDR_QUIRK(comm_region->console.flags))
+            chip->reg_out(chip, UART_MDR1, 0x7);
 		chip->reg_out(chip, UART_LCR, UART_LCR_DLAB);
 		chip->reg_out(chip, UART_DLL, chip->divider);
 		chip->reg_out(chip, UART_DLM, 0);
