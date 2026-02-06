@@ -19,7 +19,18 @@
 
 #ifndef __ASSEMBLY__
 
-typedef enum { true = 1, false = 0 } bool;
+#if !defined(__bool_true_false_are_defined) && (!defined(__STDC_VERSION__) || __STDC_VERSION__ < 202311L)
+/* C23 has bool/true/false as keywords, older standards need typedef */
+#if !defined(__cplusplus) && !defined(__bool_true_false_are_defined)
+#if __STDC_VERSION__ >= 202311L
+/* C23 and later: bool, true, false are keywords */
+#else
+typedef unsigned char bool;
+#define true 1
+#define false 0
+#endif
+#endif
+#endif
 
 /** Describes a CPU set. */
 struct cpu_set {

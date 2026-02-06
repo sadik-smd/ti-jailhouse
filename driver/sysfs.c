@@ -536,7 +536,7 @@ static ssize_t remap_pool_used_show(struct device *dev,
 }
 
 static ssize_t core_show(struct file *filp, struct kobject *kobj,
-			 struct bin_attribute *attr, char *buf, loff_t off,
+			 const struct bin_attribute *attr, char *buf, loff_t off,
 			 size_t count)
 {
 	return memory_read_from_buffer(buf, count, &off, hypervisor_mem,

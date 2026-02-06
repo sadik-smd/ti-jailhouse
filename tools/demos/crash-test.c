@@ -76,7 +76,7 @@ typedef struct {
 volatile sig_atomic_t interrupted = 0;
 struct sockaddr_in dest_addr;
 int sockfd;
-static void sigint_handler();
+static void sigint_handler(int sig);
 static void print_usage(const char*);
 static int validate_ipv4_address(const char*);
 static void configure_signal_handler();
@@ -90,7 +90,8 @@ char sendpacket[PACKET_SIZE];
 char recvpacket[PACKET_SIZE];
 
 /* Signal handler for SIGINT */
-static void sigint_handler() {
+static void sigint_handler(int sig) {
+	(void)sig;
 	interrupted = 1;
 }
 
