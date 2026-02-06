@@ -55,7 +55,7 @@ struct jailhouse_header {
 	/** Signature "JAILHOUS" used for basic validity check of the
 	 * hypervisor image.
 	 * @note Filled at build time. */
-	char signature[8];
+	char signature[8] __attribute__((nonstring));
 	/** Size of hypervisor core.
 	 * It starts with the hypervisor's header and ends after its bss
 	 * section. Rounded up to page boundary.

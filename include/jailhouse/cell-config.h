@@ -91,7 +91,7 @@
  * structure.
  */
 struct jailhouse_cell_desc {
-	char signature[5];
+	char signature[5] __attribute__((nonstring));
 	__u8 architecture;
 	__u16 revision;
 
@@ -330,7 +330,7 @@ struct jailhouse_pio {
  * General descriptor of the system.
  */
 struct jailhouse_system {
-	char signature[5];
+	char signature[5] __attribute__((nonstring));
 	__u8 architecture;
 	__u16 revision;
 
