@@ -23,6 +23,7 @@
 #include <linux/firmware.h>
 #include <linux/mm.h>
 #include <linux/kallsyms.h>
+#include <linux/kprobes.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,11,0)
 #include <linux/sched/signal.h>
 #endif
@@ -86,7 +87,9 @@ MODULE_FIRMWARE(JAILHOUSE_FW_NAME);
 #endif
 MODULE_VERSION(JAILHOUSE_VERSION);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,7,0)
 extern char __hyp_stub_vectors[];
+#endif
 
 struct console_state {
 	unsigned int head;
@@ -105,7 +108,16 @@ static struct jailhouse_virt_console* volatile console_page;
 static bool console_available;
 static struct resource *hypervisor_mem_res;
 
+/*
+ * For kernel >= 5.7.0, we cannot use typeof() on unexported symbols,
+ * so we declare the function pointer types explicitly.
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
+static int (*ioremap_page_range_sym)(unsigned long addr, unsigned long end,
+				     phys_addr_t phys_addr, pgprot_t prot);
+#else
 static typeof(ioremap_page_range) *ioremap_page_range_sym;
+#endif
 #ifdef CONFIG_X86
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,3,0)
 #define lapic_timer_period	lapic_timer_frequency
@@ -117,7 +129,11 @@ static typeof(lapic_timer_period) *lapic_timer_period_sym;
 static typeof(__boot_cpu_mode) *__boot_cpu_mode_sym;
 #endif
 #if defined(CONFIG_ARM) || defined(CONFIG_ARM64)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
+static char *__hyp_stub_vectors_sym;
+#else
 static typeof(__hyp_stub_vectors) *__hyp_stub_vectors_sym;
+#endif
 #endif
 
 /* last_console contains three members:
@@ -201,8 +217,11 @@ static long get_max_cpus(u32 cpu_set_size,
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,8,0)
+static struct vm_struct *(*__get_vm_area_caller_sym)(unsigned long size,
+	unsigned long flags, unsigned long start, unsigned long end,
+	const void *caller);
 #define __get_vm_area(size, flags, start, end)			\
-	__get_vm_area_caller(size, flags, start, end,		\
+	__get_vm_area_caller_sym(size, flags, start, end,	\
 			     __builtin_return_address(0))
 #endif
 
@@ -501,7 +520,11 @@ static int jailhouse_cmd_enable(struct jailhouse_system __user *arg)
 	header->max_cpus = max_cpus;
 
 #if defined(CONFIG_ARM) || defined(CONFIG_ARM64)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
+	header->arm_linux_hyp_vectors = virt_to_phys(__hyp_stub_vectors_sym);
+#else
 	header->arm_linux_hyp_vectors = virt_to_phys(*__hyp_stub_vectors_sym);
+#endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)
 	header->arm_linux_hyp_abi = HYP_STUB_ABI_LEGACY;
 #else
@@ -923,7 +946,23 @@ static int __init jailhouse_init(void)
 {
 	int err;
 
-#if defined(CONFIG_KALLSYMS_ALL) && LINUX_VERSION_CODE < KERNEL_VERSION(5,7,0)
+/*
+ * Symbol resolution: use kprobes trick for kernel >= 5.7.0 since
+ * kallsyms_lookup_name is no longer exported
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
+#define __RESOLVE_EXTERNAL_SYMBOL(symbol)			\
+	do {							\
+		struct kprobe kp = { .symbol_name = #symbol };	\
+		int ret = register_kprobe(&kp);			\
+		if (ret < 0) {					\
+			pr_err("jailhouse: failed to resolve " #symbol "\n"); \
+			return -EINVAL;				\
+		}						\
+		symbol##_sym = (void *)kp.addr;			\
+		unregister_kprobe(&kp);				\
+	} while (0)
+#elif defined(CONFIG_KALLSYMS_ALL)
 #define __RESOLVE_EXTERNAL_SYMBOL(symbol)			\
 	symbol##_sym = (void *)kallsyms_lookup_name(#symbol);	\
 	if (!symbol##_sym)					\
@@ -935,6 +974,9 @@ static int __init jailhouse_init(void)
 #define RESOLVE_EXTERNAL_SYMBOL(symbol...) __RESOLVE_EXTERNAL_SYMBOL(symbol)
 
 	RESOLVE_EXTERNAL_SYMBOL(ioremap_page_range);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,8,0)
+	RESOLVE_EXTERNAL_SYMBOL(__get_vm_area_caller);
+#endif
 #ifdef CONFIG_X86
 	RESOLVE_EXTERNAL_SYMBOL(lapic_timer_period);
 #endif

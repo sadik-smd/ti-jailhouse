@@ -535,9 +535,15 @@ static ssize_t remap_pool_used_show(struct device *dev,
 	return info_show(dev, buffer, JAILHOUSE_INFO_REMAP_POOL_USED);
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,11,0)
+static ssize_t core_show(struct file *filp, struct kobject *kobj,
+			 const struct bin_attribute *attr, char *buf, loff_t off,
+			 size_t count)
+#else
 static ssize_t core_show(struct file *filp, struct kobject *kobj,
 			 struct bin_attribute *attr, char *buf, loff_t off,
 			 size_t count)
+#endif
 {
 	return memory_read_from_buffer(buf, count, &off, hypervisor_mem,
 				       attr->size);
