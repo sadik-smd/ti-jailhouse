@@ -474,8 +474,22 @@ out:
 
 		list_for_each_entry(ce, &overlay_changeset.entries, node)
 			free_prop(ce->prop);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,6,0)
+		{
+			struct of_changeset_entry *cen;
+
+			list_for_each_entry_safe(ce, cen,
+						 &overlay_changeset.entries,
+						 node) {
+				list_del(&ce->node);
+				kfree(ce);
+			}
+		}
+		of_overlay_remove(&overlay_id);
+#else
 		of_changeset_destroy(&overlay_changeset);
 		of_overlay_remove(&overlay_id);
+#endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,17,0)
 out_compat:
 		kfree(overlay);
@@ -489,9 +503,63 @@ out_compat:
 static void destroy_vpci_of_overlay(void)
 {
 	if (overlay_applied) {
+		struct of_changeset_entry *ce;
+		struct device_node *vpci_node;
+		static struct of_changeset dummy_cset;
+
+		/*
+		 * The kernel PCI core (of_pci_remove_host_bridge_node) calls
+		 * of_changeset_revert(np->data) during PCI bridge removal.
+		 * Since jailhouse created the node via overlay (not the
+		 * kernel's of_pci_make_host_bridge_node), np->data is NULL,
+		 * causing a NULL pointer dereference.
+		 *
+		 * Work around this by setting np->data to an empty changeset
+		 * before triggering removal, so the kernel's revert is a
+		 * no-op instead of a crash.
+		 */
+		vpci_node = of_find_node_by_path("/pci@0");
+		if (vpci_node) {
+			if (!vpci_node->data) {
+				of_changeset_init(&dummy_cset);
+				vpci_node->data = &dummy_cset;
+			}
+			of_node_put(vpci_node);
+		}
+
 		of_changeset_revert(&overlay_changeset);
+		list_for_each_entry(ce, &overlay_changeset.entries, node)
+			free_prop(ce->prop);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,6,0)
+		/*
+		 * On kernel >= 6.6, of_overlay_remove() internally calls
+		 * free_overlay_changeset() → of_changeset_destroy() which
+		 * checks and drops refcounts on the overlay node. The PCI
+		 * subsystem also drops refs during bus teardown. We cannot
+		 * safely call of_node_put() or of_changeset_destroy() on
+		 * our changeset — the refcount balance depends on PCI core
+		 * behavior and doing either causes underflow.
+		 *
+		 * Just free our changeset entry structs (no ref changes)
+		 * and let of_overlay_remove() handle all node lifecycle.
+		 * The overlay system will warn about refcount != 1 but
+		 * this is cosmetic — the node gets freed regardless.
+		 */
+		{
+			struct of_changeset_entry *cen;
+
+			list_for_each_entry_safe(ce, cen,
+						 &overlay_changeset.entries,
+						 node) {
+				list_del(&ce->node);
+				kfree(ce);
+			}
+		}
+		of_overlay_remove(&overlay_id);
+#else
 		of_changeset_destroy(&overlay_changeset);
 		of_overlay_remove(&overlay_id);
+#endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,17,0)
 		kfree(overlay);
 		overlay = NULL;
