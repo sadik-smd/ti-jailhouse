@@ -23,6 +23,7 @@
 #include <linux/firmware.h>
 #include <linux/mm.h>
 #include <linux/kallsyms.h>
+#include <linux/kprobes.h>
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4,11,0)
 #include <linux/sched/signal.h>
 #endif
@@ -86,7 +87,9 @@ MODULE_FIRMWARE(JAILHOUSE_FW_NAME);
 #endif
 MODULE_VERSION(JAILHOUSE_VERSION);
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,7,0)
 extern char __hyp_stub_vectors[];
+#endif
 
 struct console_state {
 	unsigned int head;
@@ -105,7 +108,16 @@ static struct jailhouse_virt_console* volatile console_page;
 static bool console_available;
 static struct resource *hypervisor_mem_res;
 
+/*
+ * For kernel >= 5.7.0, we cannot use typeof() on unexported symbols,
+ * so we declare the function pointer types explicitly.
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
+static int (*ioremap_page_range_sym)(unsigned long addr, unsigned long end,
+				     phys_addr_t phys_addr, pgprot_t prot);
+#else
 static typeof(ioremap_page_range) *ioremap_page_range_sym;
+#endif
 #ifdef CONFIG_X86
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5,3,0)
 #define lapic_timer_period	lapic_timer_frequency
@@ -117,7 +129,11 @@ static typeof(lapic_timer_period) *lapic_timer_period_sym;
 static typeof(__boot_cpu_mode) *__boot_cpu_mode_sym;
 #endif
 #if defined(CONFIG_ARM) || defined(CONFIG_ARM64)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
+static char *__hyp_stub_vectors_sym;
+#else
 static typeof(__hyp_stub_vectors) *__hyp_stub_vectors_sym;
+#endif
 #endif
 
 /* last_console contains three members:
@@ -201,8 +217,11 @@ static long get_max_cpus(u32 cpu_set_size,
 }
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5,8,0)
+static struct vm_struct *(*__get_vm_area_caller_sym)(unsigned long size,
+	unsigned long flags, unsigned long start, unsigned long end,
+	const void *caller);
 #define __get_vm_area(size, flags, start, end)			\
-	__get_vm_area_caller(size, flags, start, end,		\
+	__get_vm_area_caller_sym(size, flags, start, end,	\
 			     __builtin_return_address(0))
 #endif
 
@@ -501,7 +520,11 @@ static int jailhouse_cmd_enable(struct jailhouse_system __user *arg)
 	header->max_cpus = max_cpus;
 
 #if defined(CONFIG_ARM) || defined(CONFIG_ARM64)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
+	header->arm_linux_hyp_vectors = virt_to_phys(__hyp_stub_vectors_sym);
+#else
 	header->arm_linux_hyp_vectors = virt_to_phys(*__hyp_stub_vectors_sym);
+#endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4,12,0)
 	header->arm_linux_hyp_abi = HYP_STUB_ABI_LEGACY;
 #else
@@ -919,11 +942,154 @@ static struct notifier_block jailhouse_shutdown_nb = {
 	.notifier_call = jailhouse_shutdown_notify,
 };
 
+/*
+ * Fallback symbol lookup needed for symbols that kprobes cannot directly
+ * resolve (e.g. SYM_CODE_START symbols in .hyp.text) and when
+ * kallsyms_lookup_name is not exported (kernel >= 5.7.0).
+ *
+ * With CONFIG_KPROBES: resolve kallsyms_on_each_symbol via kprobes,
+ *                      then use it to iterate symbols.
+ * Without CONFIG_KPROBES: parse /proc/kallsyms directly.
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
+#ifdef CONFIG_KPROBES
+struct jailhouse_syminfo {
+	const char *name;
+	unsigned long addr;
+};
+
+static int jailhouse_sym_callback(void *data, const char *name,
+				  unsigned long addr)
+{
+	struct jailhouse_syminfo *si = data;
+
+	if (strcmp(name, si->name) == 0) {
+		si->addr = addr;
+		return 1; /* stop iteration */
+	}
+	return 0;
+}
+
+static unsigned long __init jailhouse_lookup_symbol(const char *name)
+{
+	struct jailhouse_syminfo si = { .name = name, .addr = 0 };
+	int (*kallsyms_on_each_symbol_fn)(int (*)(void *, const char *,
+					  unsigned long), void *);
+	struct kprobe kp = { .symbol_name = "kallsyms_on_each_symbol" };
+	int ret;
+
+	ret = register_kprobe(&kp);
+	if (ret < 0) {
+		pr_err("jailhouse: cannot resolve kallsyms_on_each_symbol\n");
+		return 0;
+	}
+	kallsyms_on_each_symbol_fn = (void *)kp.addr;
+	unregister_kprobe(&kp);
+
+	kallsyms_on_each_symbol_fn(jailhouse_sym_callback, &si);
+	return si.addr;
+}
+#else /* !CONFIG_KPROBES */
+static unsigned long __init jailhouse_lookup_symbol(const char *name)
+{
+	struct file *f;
+	unsigned long addr = 0;
+	char buf[512];
+	loff_t pos = 0;
+	ssize_t count;
+	int i, line_start;
+
+	f = filp_open("/proc/kallsyms", O_RDONLY, 0);
+	if (IS_ERR(f)) {
+		pr_err("jailhouse: cannot open /proc/kallsyms\n");
+		return 0;
+	}
+
+	line_start = 0;
+	while ((count = kernel_read(f, buf + line_start,
+				    sizeof(buf) - 1 - line_start, &pos)) > 0) {
+		int end = line_start + count;
+
+		buf[end] = '\0';
+		i = 0;
+		while (i < end) {
+			char *line = &buf[i];
+			char *nl = strchr(line, '\n');
+			unsigned long sym_addr;
+			char sym_type;
+			char sym_name[256];
+
+			if (!nl) {
+				memmove(buf, line, end - i);
+				line_start = end - i;
+				break;
+			}
+			*nl = '\0';
+
+			if (sscanf(line, "%lx %c %255s",
+				   &sym_addr, &sym_type, sym_name) == 3) {
+				if (strcmp(sym_name, name) == 0) {
+					addr = sym_addr;
+					goto done;
+				}
+			}
+			i = (nl - buf) + 1;
+		}
+		if (i >= end)
+			line_start = 0;
+	}
+
+done:
+	filp_close(f, NULL);
+	if (!addr)
+		pr_err("jailhouse: symbol %s not found in /proc/kallsyms\n",
+		       name);
+	return addr;
+}
+#endif /* CONFIG_KPROBES */
+#endif /* KERNEL_VERSION >= 5.7.0 */
+
 static int __init jailhouse_init(void)
 {
 	int err;
 
-#if defined(CONFIG_KALLSYMS_ALL) && LINUX_VERSION_CODE < KERNEL_VERSION(5,7,0)
+/*
+ * Symbol resolution: use kprobes trick for kernel >= 5.7.0 since
+ * kallsyms_lookup_name is no longer exported.
+ * Fall back to /proc/kallsyms parsing if kprobes are not available.
+ */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,7,0)
+#ifdef CONFIG_KPROBES
+#define __RESOLVE_EXTERNAL_SYMBOL(symbol)			\
+	do {							\
+		struct kprobe kp = { .symbol_name = #symbol };	\
+		int ret = register_kprobe(&kp);			\
+		if (ret < 0) {					\
+			/* kprobes fails for non-function symbols  \
+			 * (e.g. SYM_CODE_START in .hyp.text),     \
+			 * fall back to /proc/kallsyms parsing.    \
+			 */					\
+			symbol##_sym = (void *)jailhouse_lookup_symbol(#symbol); \
+			if (!symbol##_sym) {			\
+				pr_err("jailhouse: failed to resolve " #symbol "\n"); \
+				return -EINVAL;			\
+			}					\
+		} else {					\
+			symbol##_sym = (void *)kp.addr;		\
+			unregister_kprobe(&kp);			\
+		}						\
+	} while (0)
+#else
+#define __RESOLVE_EXTERNAL_SYMBOL(symbol)			\
+	do {							\
+		symbol##_sym = (void *)jailhouse_lookup_symbol(#symbol); \
+		if (!symbol##_sym) {				\
+			pr_err("jailhouse: failed to resolve " #symbol "\n"); \
+			return -EINVAL;				\
+		}						\
+	} while (0)
+#endif /* CONFIG_KPROBES */
+#elif defined(CONFIG_KALLSYMS_ALL)
 #define __RESOLVE_EXTERNAL_SYMBOL(symbol)			\
 	symbol##_sym = (void *)kallsyms_lookup_name(#symbol);	\
 	if (!symbol##_sym)					\
@@ -934,7 +1100,11 @@ static int __init jailhouse_init(void)
 #endif
 #define RESOLVE_EXTERNAL_SYMBOL(symbol...) __RESOLVE_EXTERNAL_SYMBOL(symbol)
 
-	RESOLVE_EXTERNAL_SYMBOL(ioremap_page_range);
+	/* ioremap_page_range is exported (EXPORT_SYMBOL_GPL), use directly */
+	ioremap_page_range_sym = ioremap_page_range;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,8,0)
+	RESOLVE_EXTERNAL_SYMBOL(__get_vm_area_caller);
+#endif
 #ifdef CONFIG_X86
 	RESOLVE_EXTERNAL_SYMBOL(lapic_timer_period);
 #endif
