@@ -136,7 +136,13 @@ enum trap_return handle_smc(struct trap_context *ctx)
 		break;
 
 	default:
-		ret = TRAP_UNHANDLED;
+		/*
+		 * Forward unhandled SMC calls (e.g. TI TISCI) to EL3
+		 * so the secure firmware can process them.
+		 */
+		stats[JAILHOUSE_CPU_STAT_VMEXITS_SMCCC]++;
+		regs[0] = smc_arg5(regs[0], regs[1], regs[2],
+				   regs[3], regs[4], regs[5]);
 	}
 
 	arch_skip_instruction(ctx);
